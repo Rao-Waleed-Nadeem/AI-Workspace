@@ -9,9 +9,12 @@ import { Message } from "@/types/chat";
 export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
+
+    setIsLoading(true);
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -19,19 +22,23 @@ export default function Home() {
       content: input,
     };
 
-    setMessages((previous) => [...previous, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
     setInput("");
 
-    const data = await getHelloMessage();
+    try {
+      const data = await getHelloMessage();
 
-    const assistantMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: data.message,
-    };
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: data.message,
+      };
 
-    setMessages((previous) => [...previous, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -40,7 +47,12 @@ export default function Home() {
 
       <ChatWindow messages={messages} />
 
-      <ChatInput input={input} setInput={setInput} onSend={handleSend} />
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        onSend={handleSend}
+        isLoading={isLoading}
+      />
     </main>
   );
 }

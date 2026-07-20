@@ -4,5 +4,9 @@ const API_URL =
 export async function getHelloMessage() {
   const response = await fetch(`${API_URL}/`);
 
+  if (!response.ok) {
+    throw new Error("Failed to fetch response");
+  }
+
   return response.json();
 }
