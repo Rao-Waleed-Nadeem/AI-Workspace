@@ -2,6 +2,11 @@ from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
 )
+from app.providers.groq_provider import (
+    GroqProvider,
+)
+
+provider = GroqProvider()
 
 
 class ChatService:
@@ -11,10 +16,6 @@ class ChatService:
         request: ChatRequest,
     ) -> ChatResponse:
 
-       reply = (
-    f"You said: {request.message}"
-)
+        reply = provider.generate_response(request.message)
 
-       return ChatResponse(
-    message=reply,
-    )
+        return ChatResponse(message=reply)
