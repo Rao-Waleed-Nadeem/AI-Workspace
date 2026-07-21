@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from app.services.chat_service import ChatService
 
 from app.schemas.chat import (
     ChatRequest,
@@ -7,13 +8,15 @@ from app.schemas.chat import (
 
 router = APIRouter()
 
+chat_service = ChatService()
+
 @router.post(
     "/chat",
-    response_model=ChatResponse
+    response_model=ChatResponse,
 )
 def chat(
     request: ChatRequest,
 ):
-    return ChatResponse(
-        message=request.message
+    return chat_service.generate_response(
+        request
     )
