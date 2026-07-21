@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ChatInput from "@/components/ChatInput";
 import ChatWindow from "@/components/ChatWindow";
-import { getHelloMessage } from "@/lib/api";
+import { sendMessage } from "@/lib/api";
 import { Message } from "@/types/chat";
 
 export default function Home() {
@@ -27,7 +27,7 @@ export default function Home() {
     setInput("");
 
     try {
-      const data = await getHelloMessage();
+      const data = await sendMessage(input);
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),

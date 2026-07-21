@@ -24,7 +24,7 @@ export default function ChatInput({
       <button
         disabled={isLoading}
         onClick={onSend}
-        className="bg-blue-600 text-white px-4 rounded-lg"
+        className="bg-blue-600 text-white px-4 cursor-pointer rounded-lg"
       >
         {isLoading ? "Thinking..." : "Send"}
       </button>
