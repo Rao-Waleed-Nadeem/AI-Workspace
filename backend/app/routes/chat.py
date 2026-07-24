@@ -6,17 +6,24 @@ from app.schemas.chat import (
     ChatResponse,
 )
 
+from fastapi import Depends
+
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+
 router = APIRouter()
 
 chat_service = ChatService()
 
-@router.post(
-    "/chat",
-    response_model=ChatResponse,
-)
+
+@app.post("/chat")
 def chat(
     request: ChatRequest,
+    db: Session = Depends(get_db),
 ):
+
     return chat_service.generate_response(
-        request
+        db,
+        request,
     )

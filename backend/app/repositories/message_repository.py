@@ -18,7 +18,7 @@ def create_message(
 
     db.add(message)
 
-    db.commit()
+    db.flush()
 
     db.refresh(message)
 

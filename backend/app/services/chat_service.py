@@ -26,29 +26,36 @@ class ChatService:
         request: ChatRequest,
     ) -> ChatResponse:
 
-        chat = create_chat(
-            db=db,
-            title="New Chat",
-        )
+        try:
+            chat = create_chat(
+                db=db,
+                title="New Chat",
+            )
 
-        create_message(
-            db=db,
-            chat_id=chat.id,
-            role="user",
-            content=request.message,
-        )
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="user",
+                content=request.message,
+            )
 
-        reply = provider.generate_response(
-            request.message,
-        )
+            reply = provider.generate_response(
+                request.message,
+            )
 
-        create_message(
-            db=db,
-            chat_id=chat.id,
-            role="assistant",
-            content=reply,
-        )
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="assistant",
+                content=reply,
+            )
 
-        return ChatResponse(
-            message=reply,
-        )
+            db.commit()
+
+            return ChatResponse(
+                message=reply,
+            )
+
+        except:
+            db.rollback()
+            raise

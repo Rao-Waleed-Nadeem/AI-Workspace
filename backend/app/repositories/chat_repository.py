@@ -14,7 +14,7 @@ def create_chat(
 
     db.add(chat)
 
-    db.commit()
+    db.flush()
 
     db.refresh(chat)
 
