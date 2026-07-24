@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.schemas.chat import (
     ChatRequest,
@@ -7,9 +8,7 @@ from app.schemas.chat import (
 
 from app.providers.groq_provider import GroqProvider
 
-from app.repositories.chat_repository import (
-    create_chat,
-)
+from app.repositories.chat_repository import create_chat, get_chat
 
 from app.repositories.message_repository import (
     create_message,
@@ -27,10 +26,28 @@ class ChatService:
     ) -> ChatResponse:
 
         try:
-            chat = create_chat(
-                db=db,
-                title="New Chat",
-            )
+            if request.chat_id is None:
+
+                chat = create_chat(
+                    db=db,
+                    title="New Chat",
+                )
+                print("chat", chat)
+
+            else:
+
+                chat = get_chat(
+                    db=db,
+                    chat_id=request.chat_id,
+                )
+                print("chat", chat)
+
+                if chat is None:
+
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Chat not found",
+                    )
 
             create_message(
                 db=db,
@@ -52,10 +69,13 @@ class ChatService:
 
             db.commit()
 
+            print("reply", reply)
+
             return ChatResponse(
+                chat_id=chat.id,
                 message=reply,
             )
 
-        except:
+        except Exception:
             db.rollback()
             raise

@@ -10,6 +10,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [chatId, setChatId] = useState<number | null>(null);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -27,8 +28,8 @@ export default function Home() {
     setInput("");
 
     try {
-      const data = await sendMessage(input);
-
+      const data = await sendMessage(input, chatId);
+      setChatId(data.chat_id);
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",

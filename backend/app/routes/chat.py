@@ -17,12 +17,13 @@ router = APIRouter()
 chat_service = ChatService()
 
 
-@app.post("/chat")
+@router.post("/chat")
 def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
 ):
 
+    # print("request", request)
     return chat_service.generate_response(
         db,
         request,
