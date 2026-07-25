@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from app.services.chat_service import ChatService
 
 from app.schemas.chat import (
@@ -27,4 +28,19 @@ def chat(
     return chat_service.generate_response(
         db,
         request,
+    )
+
+
+@router.post("/chat/stream")
+def stream_response(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+):
+
+    return StreamingResponse(
+        chat_service.stream_response(
+            db=db,
+            request=request,
+        ),
+        media_type="text/event-stream",
     )

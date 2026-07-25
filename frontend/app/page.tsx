@@ -17,26 +17,54 @@ export default function Home() {
 
     setIsLoading(true);
 
+    const message = input;
+
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: input,
+      content: message,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantId = crypto.randomUUID();
+
+    const assistantMessage: Message = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
     setInput("");
 
     try {
-      const data = await sendMessage(input, chatId);
-      setChatId(data.chat_id);
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data.message,
-      };
+      const fullResponse = await sendMessage(
+        message,
+        chatId,
+        (streamedText) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? {
+                    ...msg,
+                    content: streamedText,
+                  }
+                : msg,
+            ),
+          );
+        },
+      );
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                content: fullResponse,
+              }
+            : msg,
+        ),
+      );
     } finally {
       setIsLoading(false);
     }

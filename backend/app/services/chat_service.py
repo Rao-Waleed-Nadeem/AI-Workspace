@@ -10,9 +10,7 @@ from app.providers.groq_provider import GroqProvider
 
 from app.repositories.chat_repository import create_chat, get_chat
 
-from app.repositories.message_repository import (
-    create_message,
-)
+from app.repositories.message_repository import create_message, get_chat_messages
 
 provider = GroqProvider()
 
@@ -56,8 +54,23 @@ class ChatService:
                 content=request.message,
             )
 
+            history = get_chat_messages(
+                db=db,
+                chat_id=chat.id,
+            )
+
+            conversation = []
+
+            for message in history:
+                conversation.append(
+                    {
+                        "role": message.role,
+                        "content": message.content,
+                    }
+                )
+
             reply = provider.generate_response(
-                request.message,
+                conversation,
             )
 
             create_message(
@@ -75,6 +88,77 @@ class ChatService:
                 chat_id=chat.id,
                 message=reply,
             )
+
+        except Exception:
+            db.rollback()
+            raise
+
+    def stream_response(
+        self,
+        db: Session,
+        request: ChatRequest,
+    ):
+
+        try:
+            if request.chat_id is None:
+
+                chat = create_chat(
+                    db=db,
+                    title="New Chat",
+                )
+
+            else:
+
+                chat = get_chat(
+                    db=db,
+                    chat_id=request.chat_id,
+                )
+
+                if chat is None:
+
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Chat not found",
+                    )
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="user",
+                content=request.message,
+            )
+
+            history = get_chat_messages(
+                db=db,
+                chat_id=chat.id,
+            )
+
+            conversation = []
+
+            for message in history:
+                conversation.append(
+                    {
+                        "role": message.role,
+                        "content": message.content,
+                    }
+                )
+
+            full_response = ""
+
+            for token in provider.stream_response(conversation):
+
+                full_response += token
+
+                yield f"data: {token}\n\n"
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="assistant",
+                content=full_response,
+            )
+
+            db.commit()
 
         except Exception:
             db.rollback()

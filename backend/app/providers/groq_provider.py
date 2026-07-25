@@ -15,17 +15,30 @@ class GroqProvider(BaseAIProvider):
 
     def generate_response(
         self,
-        message: str,
+        messages: list[dict],
     ) -> str:
 
         completion = self.client.chat.completions.create(
             model=settings.MODEL_NAME,
-            messages=[
-                {
-                    "role": "user",
-                    "content": message,
-                }
-            ],
+            messages=messages,
         )
 
         return completion.choices[0].message.content
+
+    def stream_response(
+        self,
+        messages: list[dict],
+    ):
+
+        stream = self.client.chat.completions.create(
+            model=settings.MODEL_NAME,
+            messages=messages,
+            stream=True,
+        )
+
+        for chunk in stream:
+
+            delta = chunk.choices[0].delta.content
+
+            if delta:
+                yield delta
