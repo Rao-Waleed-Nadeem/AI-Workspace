@@ -145,6 +145,9 @@ class ChatService:
 
             full_response = ""
 
+            # Send chat_id as the first SSE event so the client can track the conversation
+            yield f"event: chat_id\ndata: {chat.id}\n\n"
+
             for token in provider.stream_response(conversation):
 
                 full_response += token

@@ -38,7 +38,7 @@ export default function Home() {
     setInput("");
 
     try {
-      const fullResponse = await sendMessage(
+      const { text, chatId: newChatId } = await sendMessage(
         message,
         chatId,
         (streamedText) => {
@@ -55,12 +55,18 @@ export default function Home() {
         },
       );
 
+      // Persist the chat_id returned by the backend (important for new chats)
+      if (newChatId !== null) {
+        setChatId(newChatId);
+      }
+
+      // Ensure the final complete text is rendered (guards against partial last chunk)
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantId
             ? {
                 ...msg,
-                content: fullResponse,
+                content: text,
               }
             : msg,
         ),
