@@ -4,6 +4,7 @@ export async function sendMessage(
   message: string,
   chatId: number | null,
   onChunk: (chunk: string) => void,
+  action: string | null = null,
 ): Promise<{ text: string; chatId: number | null }> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: "POST",
@@ -13,6 +14,7 @@ export async function sendMessage(
     body: JSON.stringify({
       chat_id: chatId,
       message,
+      action,
     }),
   });
 

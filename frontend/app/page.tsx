@@ -11,6 +11,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
+  const [action, setAction] = useState<string | null>(null);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -53,6 +54,7 @@ export default function Home() {
             ),
           );
         },
+        action,
       );
 
       // Persist the chat_id returned by the backend (important for new chats)
@@ -74,6 +76,7 @@ export default function Home() {
       );
     } finally {
       setIsLoading(false);
+      setAction(null);
     }
   };
 
@@ -115,6 +118,17 @@ export default function Home() {
       <h1 className="text-3xl font-bold mb-5">AI Workspace</h1>
 
       <ChatWindow messages={messages} />
+      <button
+        onClick={() => setAction(action === "explain" ? null : "explain")}
+        disabled={isLoading}
+        className={`mb-4 cursor-pointer  rounded-lg px-4 py-2 ${
+          action === "explain"
+            ? "bg-blue-600 hover:bg-blue-700 text-white"
+            : "bg-gray-200 hover:bg-gray-400 text-black"
+        }`}
+      >
+        Explain
+      </button>
 
       <ChatInput
         input={input}
