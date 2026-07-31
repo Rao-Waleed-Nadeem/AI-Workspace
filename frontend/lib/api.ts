@@ -30,52 +30,90 @@ export async function sendMessage(
   let fullResponse = "";
   let resolvedChatId: number | null = null;
 
-  // SSE parsing state — buffer incomplete lines between chunks
   let buffer = "";
-  let currentEventType = "message"; // default SSE event type
+
+  // Current SSE event
+  let currentEventType = "message";
+  let currentEventData: string[] = [];
+
+  const processEvent = () => {
+    if (currentEventData.length === 0) {
+      currentEventType = "message";
+      return;
+    }
+
+    // SSE joins multiple data lines with newline characters
+    const data = currentEventData.join("\n");
+
+    if (currentEventType === "chat_id") {
+      const parsedChatId = Number(data);
+
+      if (!Number.isNaN(parsedChatId)) {
+        resolvedChatId = parsedChatId;
+      }
+    } else {
+      fullResponse += data;
+      onChunk(fullResponse);
+    }
+
+    currentEventData = [];
+    currentEventType = "message";
+  };
 
   while (true) {
     const { done, value } = await reader.read();
 
-    if (done) break;
+    if (done) {
+      break;
+    }
 
-    // Append decoded bytes to our running line buffer
     buffer += decoder.decode(value, { stream: true });
 
-    // Split on newlines; keep the last (possibly incomplete) fragment
     const lines = buffer.split("\n");
+
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      const trimmed = line.replace(/\r$/, ""); // strip only CR; preserve trailing spaces (they are valid token content)
+      const normalizedLine = line.replace(/\r$/, "");
 
-      if (trimmed === "") {
-        // Blank line signals end of an SSE event; reset event type
-        currentEventType = "message";
+      // Blank line = end of SSE event
+      if (normalizedLine === "") {
+        processEvent();
         continue;
       }
 
-      if (trimmed.startsWith("event:")) {
-        // Named event — store for the next data line
-        currentEventType = trimmed.slice("event:".length).trim();
+      if (normalizedLine.startsWith("event:")) {
+        currentEventType = normalizedLine.slice("event:".length).trim();
+
         continue;
       }
 
-      if (trimmed.startsWith("data:")) {
-        // Per SSE spec: remove at most one space after "data:" — preserve all other whitespace (token spaces)
-        const raw = trimmed.slice("data:".length);
+      if (normalizedLine.startsWith("data:")) {
+        const raw = normalizedLine.slice("data:".length);
+
+        // SSE removes exactly one optional space after "data:"
         const payload = raw.startsWith(" ") ? raw.slice(1) : raw;
 
-        if (currentEventType === "chat_id") {
-          resolvedChatId = parseInt(payload, 10);
-        } else {
-          // Regular text token — accumulate and stream to UI
-          fullResponse += payload;
-          onChunk(fullResponse);
-        }
+        currentEventData.push(payload);
       }
     }
   }
 
-  return { text: fullResponse, chatId: resolvedChatId };
+  // Process any final event that did not receive a trailing blank line
+  processEvent();
+
+  return {
+    text: fullResponse,
+    chatId: resolvedChatId,
+  };
+}
+
+export async function getChatMessages(chatId: number) {
+  const response = await fetch(`${API_URL}/chat/${chatId}/messages`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load chat messages");
+  }
+
+  return response.json();
 }
