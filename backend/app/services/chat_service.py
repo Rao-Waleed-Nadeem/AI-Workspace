@@ -123,7 +123,7 @@ class ChatService:
                         detail="Chat not found",
                     )
 
-            create_message(
+            user_message = create_message(
                 db=db,
                 chat_id=chat.id,
                 role="user",
@@ -139,11 +139,7 @@ class ChatService:
 
             for message in history:
                 content = message.content
-                if (
-                    message.role == "user"
-                    and message.content == request.message
-                    and request.action == "explain"
-                ):
+                if message.id == user_message.id and request.action == "explain":
                     content = build_explain_prompt(
                         message.content,
                     )
@@ -151,7 +147,7 @@ class ChatService:
                 conversation.append(
                     {
                         "role": message.role,
-                        "content": message.content,
+                        "content": content,
                     }
                 )
 
