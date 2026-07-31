@@ -20,7 +20,18 @@ class GroqProvider(BaseAIProvider):
 
         completion = self.client.chat.completions.create(
             model=settings.MODEL_NAME,
-            messages=messages,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Always format your responses using Markdown. "
+                        "Use headings when appropriate, bullet or numbered lists "
+                        "for lists, bold or italic text when useful, and fenced "
+                        "code blocks with the correct language identifier for code."
+                    ),
+                },
+                *messages,
+            ],
         )
 
         return completion.choices[0].message.content
@@ -32,7 +43,18 @@ class GroqProvider(BaseAIProvider):
 
         stream = self.client.chat.completions.create(
             model=settings.MODEL_NAME,
-            messages=messages,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Always format your responses using Markdown. "
+                        "Use headings when appropriate, bullet or numbered lists "
+                        "for lists, bold or italic text when useful, and fenced "
+                        "code blocks with the correct language identifier for code."
+                    ),
+                },
+                *messages,
+            ],
             stream=True,
         )
 

@@ -8,6 +8,8 @@ from app.schemas.chat import (
 
 from app.providers.groq_provider import GroqProvider
 
+from app.prompts.prompt_service import build_explain_prompt
+
 from app.repositories.chat_repository import create_chat, get_chat
 
 from app.repositories.message_repository import create_message, get_chat_messages
@@ -136,6 +138,16 @@ class ChatService:
             conversation = []
 
             for message in history:
+                content = message.content
+                if (
+                    message.role == "user"
+                    and message.content == request.message
+                    and request.action == "explain"
+                ):
+                    content = build_explain_prompt(
+                        message.content,
+                    )
+
                 conversation.append(
                     {
                         "role": message.role,
@@ -151,8 +163,14 @@ class ChatService:
             for token in provider.stream_response(conversation):
 
                 full_response += token
+                # Normalize line endings for SSE
+                token = token.replace("\r\n", "\n").replace("\r", "\n")
 
-                yield f"data: {token}\n\n"
+                # SSE requires each line of data to have its own "data:" prefix
+                for line in token.split("\n"):
+                    yield f"data: {line}\n"
+
+                yield "\n"
 
             create_message(
                 db=db,
@@ -166,3 +184,24 @@ class ChatService:
         except Exception:
             db.rollback()
             raise
+
+    def get_messages(
+        self,
+        db: Session,
+        chat_id: int,
+    ):
+        chat = get_chat(
+            db=db,
+            chat_id=chat_id,
+        )
+
+        if chat is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Chat not found",
+            )
+
+        return get_chat_messages(
+            db=db,
+            chat_id=chat_id,
+        )

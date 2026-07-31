@@ -44,3 +44,13 @@ def stream_response(
         ),
         media_type="text/event-stream",
     )
+
+@router.get("/chat/{chat_id}/messages")
+def get_chat_messages(
+    chat_id: int,
+    db: Session = Depends(get_db),
+):
+    return chat_service.get_messages(
+        db=db,
+        chat_id=chat_id,
+    )
