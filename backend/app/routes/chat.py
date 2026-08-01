@@ -45,6 +45,7 @@ def stream_response(
         media_type="text/event-stream",
     )
 
+
 @router.get("/chat/{chat_id}/messages")
 def get_chat_messages(
     chat_id: int,
@@ -53,4 +54,14 @@ def get_chat_messages(
     return chat_service.get_messages(
         db=db,
         chat_id=chat_id,
+    )
+
+
+@router.post("/chat/structured")
+def structured_chat(
+    request: ChatRequest,
+):
+
+    return chat_service.generate_structured_response(
+        request,
     )

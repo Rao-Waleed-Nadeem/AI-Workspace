@@ -64,3 +64,18 @@ class GroqProvider(BaseAIProvider):
 
             if delta:
                 yield delta
+
+    def generate_structured_response(
+        self,
+        messages: list[dict],
+    ) -> str:
+
+        completion = self.client.chat.completions.create(
+            model=settings.MODEL_NAME,
+            messages=messages,
+            response_format={
+                "type": "json_object",
+            },
+        )
+
+        return completion.choices[0].message.content

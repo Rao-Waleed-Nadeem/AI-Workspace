@@ -1,3 +1,4 @@
+from httpcore import request
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -9,6 +10,12 @@ from app.schemas.chat import (
 from app.providers.groq_provider import GroqProvider
 
 from app.prompts.prompt_service import build_explain_prompt
+
+from app.schemas.structured_output import StructuredResponse
+
+from app.prompts.prompt_service import (
+    build_structured_analysis_prompt,
+)
 
 from app.repositories.chat_repository import create_chat, get_chat
 
@@ -201,3 +208,87 @@ class ChatService:
             db=db,
             chat_id=chat_id,
         )
+
+    def generate_structured_response(
+        self,
+        db: Session,
+        request: ChatRequest,
+    ) -> StructuredResponse:
+
+        try:
+
+            if request.chat_id is None:
+
+                chat = create_chat(
+                    db=db,
+                    title="New Chat",
+                )
+
+            else:
+
+                chat = get_chat(
+                    db=db,
+                    chat_id=request.chat_id,
+                )
+
+                if chat is None:
+
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Chat not found",
+                    )
+
+            user_message = create_message(
+                db=db,
+                chat_id=chat.id,
+                role="user",
+                content=request.message,
+            )
+
+            history = get_chat_messages(
+                db=db,
+                chat_id=chat.id,
+            )
+
+            conversation = []
+
+            for message in history:
+
+                content = message.content
+
+                if message.id == user_message.id:
+
+                    content = build_structured_analysis_prompt(
+                        message.content,
+                    )
+
+                conversation.append(
+                    {
+                        "role": message.role,
+                        "content": content,
+                    }
+                )
+
+            response = provider.generate_structured_response(
+                conversation,
+            )
+
+            structured_response = StructuredResponse.model_validate_json(
+                response,
+            )
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="assistant",
+                content=structured_response.model_dump_json(),
+            )
+
+            db.commit()
+
+            return structured_response
+
+        except Exception:
+
+            db.rollback()
+            raise
