@@ -119,3 +119,30 @@ export async function getChatMessages(chatId: number) {
 
   return response.json();
 }
+
+export async function analyzeMessage(
+  message: string,
+  chatId: number | null,
+): Promise<{
+  chat_id: number | null;
+  title: string;
+  summary: string;
+  keywords: string[];
+}> {
+  const response = await fetch(`${API_URL}/chat/structured`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to analyze message");
+  }
+
+  return response.json();
+}

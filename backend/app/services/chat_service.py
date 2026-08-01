@@ -11,7 +11,10 @@ from app.providers.groq_provider import GroqProvider
 
 from app.prompts.prompt_service import build_explain_prompt
 
-from app.schemas.structured_output import StructuredResponse
+from app.schemas.structured_output import (
+    StructuredResponse,
+    StructuredAIResponse,
+)
 
 from app.prompts.prompt_service import (
     build_structured_analysis_prompt,
@@ -273,8 +276,15 @@ class ChatService:
                 conversation,
             )
 
-            structured_response = StructuredResponse.model_validate_json(
+            ai_response = StructuredAIResponse.model_validate_json(
                 response,
+            )
+
+            structured_response = StructuredResponse(
+                chat_id=chat.id,
+                title=ai_response.title,
+                summary=ai_response.summary,
+                keywords=ai_response.keywords,
             )
 
             create_message(

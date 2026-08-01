@@ -60,8 +60,10 @@ def get_chat_messages(
 @router.post("/chat/structured")
 def structured_chat(
     request: ChatRequest,
+    db: Session = Depends(get_db),
 ):
 
     return chat_service.generate_structured_response(
-        request,
+        db=db,
+        request=request,
     )

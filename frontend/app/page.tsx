@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import ChatInput from "@/components/ChatInput";
 import ChatWindow from "@/components/ChatWindow";
-import { sendMessage, getChatMessages } from "@/lib/api";
+import { sendMessage, getChatMessages, analyzeMessage } from "@/lib/api";
 import { Message } from "@/types/chat";
 
 export default function Home() {
@@ -113,6 +113,41 @@ export default function Home() {
       });
   }, []);
 
+  const handleAnalyze = async () => {
+    if (!input.trim() || isLoading) return;
+
+    setIsLoading(true);
+
+    const message = input;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    setInput("");
+
+    try {
+      const result = await analyzeMessage(message, chatId);
+
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `## ${result.title}\n\n${result.summary}\n\n**Keywords:** ${result.keywords.join(", ")}`,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // The structured endpoint creates a chat when chatId is null.
+      // We need the backend to return chat_id for this to be persisted.
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="max-w-3xl mx-auto mt-10">
       <h1 className="text-3xl font-bold mb-5">AI Workspace</h1>
@@ -136,6 +171,13 @@ export default function Home() {
         onSend={handleSend}
         isLoading={isLoading}
       />
+      <button
+        onClick={handleAnalyze}
+        disabled={!input.trim() || isLoading}
+        className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50"
+      >
+        Analyze
+      </button>
     </main>
   );
 }
