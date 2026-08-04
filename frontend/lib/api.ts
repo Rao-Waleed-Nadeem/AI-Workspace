@@ -146,3 +146,32 @@ export async function analyzeMessage(
 
   return response.json();
 }
+
+export async function sendToolMessage(
+  message: string,
+  chatId: number | null,
+) {
+  const response = await fetch(`${API_URL}/chat/tools`, {
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json",
+    },
+
+    body: JSON.stringify({
+      chat_id: chatId,
+      action: "",
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    console.error("Tool API error:", errorText);
+
+    throw new Error("Failed to send tool message");
+  }
+
+  return response.json();
+}

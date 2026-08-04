@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.providers.base_provider import (
     BaseAIProvider,
 )
+# from backend.app import tools
 
 
 class GroqProvider(BaseAIProvider):
@@ -79,3 +80,23 @@ class GroqProvider(BaseAIProvider):
         )
 
         return completion.choices[0].message.content
+
+    def generate_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+    ):
+
+        completion = self.client.chat.completions.create(
+            model=settings.MODEL_NAME,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+        )
+
+        message = completion.choices[0].message
+
+        print("CONTENT:", message.content)
+        print("TOOL CALLS:", message.tool_calls)
+
+        return message

@@ -3,7 +3,12 @@
 import { useState, useEffect } from "react";
 import ChatInput from "@/components/ChatInput";
 import ChatWindow from "@/components/ChatWindow";
-import { sendMessage, getChatMessages, analyzeMessage } from "@/lib/api";
+import {
+  sendMessage,
+  getChatMessages,
+  analyzeMessage,
+  sendToolMessage,
+} from "@/lib/api";
 import { Message } from "@/types/chat";
 
 export default function Home() {
@@ -77,6 +82,45 @@ export default function Home() {
     } finally {
       setIsLoading(false);
       setAction(null);
+    }
+  };
+
+  const handleToolTest = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+
+    const message = input.trim();
+
+    if (!message) {
+      setIsLoading(false);
+      return;
+    }
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    setInput("");
+
+    try {
+      const data = await sendToolMessage(message, chatId);
+
+      setChatId(data.chat_id);
+
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: data.message,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -177,6 +221,13 @@ export default function Home() {
         className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50"
       >
         Analyze
+      </button>
+      <button
+        onClick={handleToolTest}
+        disabled={isLoading}
+        className="px-4 py-2 bg-green-600 text-white rounded-lg mb-4"
+      >
+        Test Tool
       </button>
     </main>
   );

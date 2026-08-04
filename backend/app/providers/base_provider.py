@@ -6,6 +6,14 @@ class BaseAIProvider(ABC):
     @abstractmethod
     def generate_response(
         self,
-        message: str,
+        messages: list[dict],
     ) -> str:
+        pass
+
+    @abstractmethod
+    def generate_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+    ):
         pass

@@ -67,3 +67,14 @@ def structured_chat(
         db=db,
         request=request,
     )
+
+@router.post("/chat/tools")
+def tool_chat(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+):
+
+    return chat_service.generate_tool_response(
+        db=db,
+        request=request,
+    )

@@ -1,3 +1,8 @@
+import json
+
+from app.tools.definitions import CALCULATOR_TOOL
+from app.tools.registry import TOOLS
+
 from httpcore import request
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -297,6 +302,120 @@ class ChatService:
             db.commit()
 
             return structured_response
+
+        except Exception:
+
+            db.rollback()
+            raise
+
+    def generate_tool_response(
+        self,
+        db: Session,
+        request: ChatRequest,
+    ) -> ChatResponse:
+
+        try:
+
+            if request.chat_id is None:
+
+                chat = create_chat(
+                    db=db,
+                    title="New Chat",
+                )
+
+            else:
+
+                chat = get_chat(
+                    db=db,
+                    chat_id=request.chat_id,
+                )
+
+                if chat is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Chat not found",
+                    )
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="user",
+                content=request.message,
+            )
+
+            history = get_chat_messages(
+                db=db,
+                chat_id=chat.id,
+            )
+
+            conversation = []
+
+            for message in history:
+                conversation.append(
+                    {
+                        "role": message.role,
+                        "content": message.content,
+                    }
+                )
+
+            response_message = provider.generate_with_tools(
+                conversation,
+                [CALCULATOR_TOOL],
+            )
+
+            if response_message.tool_calls:
+
+                tool_call = response_message.tool_calls[0]
+
+                tool_name = tool_call.function.name
+
+                arguments = json.loads(tool_call.function.arguments)
+
+                tool = TOOLS.get(tool_name)
+
+                if tool is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Unknown tool",
+                    )
+
+                tool_result = tool(**arguments)
+
+                conversation.append(response_message)
+               
+                conversation.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": tool_result,
+                    }
+                )
+
+                final_message = provider.generate_with_tools(
+                    conversation,
+                    [CALCULATOR_TOOL],
+                )
+
+                reply = final_message.content
+
+            else:
+
+                reply = response_message.content
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="assistant",
+                content=reply,
+            )
+
+            db.commit()
+
+            return ChatResponse(
+                chat_id=chat.id,
+                message=reply,
+            )
 
         except Exception:
 
