@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -12,6 +12,13 @@ class Chat(Base):
 
     title = Column(String, nullable=False)
 
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -21,4 +28,9 @@ class Chat(Base):
         "Message",
         back_populates="chat",
         cascade="all, delete-orphan",
+    )
+
+    user = relationship(
+        "User",
+        back_populates="chats",
     )

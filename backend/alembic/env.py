@@ -1,5 +1,5 @@
 from app.database import Base
-from app.models import Chat, Message
+from app.models import Chat, Message, User
 from app.core.config import settings
 from logging.config import fileConfig
 
