@@ -2,6 +2,9 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.services.chat_service import ChatService
 
+from app.core.dependencies import get_current_user
+from app.models import User
+
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -22,6 +25,7 @@ chat_service = ChatService()
 def chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
     # print("request", request)
