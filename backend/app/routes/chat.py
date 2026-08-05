@@ -32,6 +32,7 @@ def chat(
     return chat_service.generate_response(
         db,
         request,
+        user_id=current_user.id,
     )
 
 
@@ -39,12 +40,14 @@ def chat(
 def stream_response(
     request: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
     return StreamingResponse(
         chat_service.stream_response(
             db=db,
             request=request,
+            user_id=current_user.id,
         ),
         media_type="text/event-stream",
     )
@@ -54,10 +57,12 @@ def stream_response(
 def get_chat_messages(
     chat_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return chat_service.get_messages(
         db=db,
         chat_id=chat_id,
+        user_id=current_user.id,
     )
 
 
@@ -65,20 +70,24 @@ def get_chat_messages(
 def structured_chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
     return chat_service.generate_structured_response(
         db=db,
         request=request,
+        user_id=current_user.id,
     )
 
 @router.post("/chat/tools")
 def tool_chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     return chat_service.generate_tool_response(
         db=db,
         request=request,
+        user_id=current_user.id,
     )

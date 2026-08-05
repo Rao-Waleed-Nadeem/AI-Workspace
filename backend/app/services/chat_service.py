@@ -38,6 +38,7 @@ class ChatService:
         self,
         db: Session,
         request: ChatRequest,
+        user_id: int,
     ) -> ChatResponse:
 
         try:
@@ -46,6 +47,7 @@ class ChatService:
                 chat = create_chat(
                     db=db,
                     title="New Chat",
+                    user_id=user_id,
                 )
                 print("chat", chat)
 
@@ -54,6 +56,7 @@ class ChatService:
                 chat = get_chat(
                     db=db,
                     chat_id=request.chat_id,
+                    user_id=user_id,
                 )
                 print("chat", chat)
 
@@ -74,6 +77,7 @@ class ChatService:
             history = get_chat_messages(
                 db=db,
                 chat_id=chat.id,
+                user_id=user_id,
             )
 
             conversation = []
@@ -114,6 +118,7 @@ class ChatService:
         self,
         db: Session,
         request: ChatRequest,
+        user_id: int,
     ):
 
         try:
@@ -122,6 +127,7 @@ class ChatService:
                 chat = create_chat(
                     db=db,
                     title="New Chat",
+                    user_id=user_id,
                 )
 
             else:
@@ -129,6 +135,7 @@ class ChatService:
                 chat = get_chat(
                     db=db,
                     chat_id=request.chat_id,
+                    user_id=user_id,
                 )
 
                 if chat is None:
@@ -148,6 +155,7 @@ class ChatService:
             history = get_chat_messages(
                 db=db,
                 chat_id=chat.id,
+                user_id=user_id,
             )
 
             conversation = []
@@ -200,10 +208,12 @@ class ChatService:
         self,
         db: Session,
         chat_id: int,
+        user_id: int,
     ):
         chat = get_chat(
             db=db,
             chat_id=chat_id,
+            user_id=user_id,
         )
 
         if chat is None:
@@ -215,12 +225,14 @@ class ChatService:
         return get_chat_messages(
             db=db,
             chat_id=chat_id,
+            user_id=user_id,
         )
 
     def generate_structured_response(
         self,
         db: Session,
         request: ChatRequest,
+        user_id: int,
     ) -> StructuredResponse:
 
         try:
@@ -230,6 +242,7 @@ class ChatService:
                 chat = create_chat(
                     db=db,
                     title="New Chat",
+                    user_id=user_id,
                 )
 
             else:
@@ -237,6 +250,7 @@ class ChatService:
                 chat = get_chat(
                     db=db,
                     chat_id=request.chat_id,
+                    user_id=user_id,
                 )
 
                 if chat is None:
@@ -256,6 +270,7 @@ class ChatService:
             history = get_chat_messages(
                 db=db,
                 chat_id=chat.id,
+                user_id=user_id,
             )
 
             conversation = []
@@ -312,6 +327,7 @@ class ChatService:
         self,
         db: Session,
         request: ChatRequest,
+        user_id: int,
     ) -> ChatResponse:
 
         try:
@@ -321,6 +337,7 @@ class ChatService:
                 chat = create_chat(
                     db=db,
                     title="New Chat",
+                    user_id=user_id,
                 )
 
             else:
@@ -328,6 +345,7 @@ class ChatService:
                 chat = get_chat(
                     db=db,
                     chat_id=request.chat_id,
+                    user_id=user_id,
                 )
 
                 if chat is None:
@@ -346,6 +364,7 @@ class ChatService:
             history = get_chat_messages(
                 db=db,
                 chat_id=chat.id,
+                user_id=user_id,
             )
 
             conversation = []

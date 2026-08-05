@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "./auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export async function sendMessage(
@@ -8,9 +10,7 @@ export async function sendMessage(
 ): Promise<{ text: string; chatId: number | null }> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       chat_id: chatId,
       message,
@@ -111,7 +111,12 @@ export async function sendMessage(
 }
 
 export async function getChatMessages(chatId: number) {
-  const response = await fetch(`${API_URL}/chat/${chatId}/messages`);
+  const response = await fetch(
+    `${API_URL}/chat/${chatId}/messages`,
+    {
+      headers: getAuthHeaders(),
+    },
+  );
 
   if (!response.ok) {
     throw new Error("Failed to load chat messages");
@@ -131,9 +136,7 @@ export async function analyzeMessage(
 }> {
   const response = await fetch(`${API_URL}/chat/structured`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       chat_id: chatId,
       message,
@@ -154,9 +157,7 @@ export async function sendToolMessage(
   const response = await fetch(`${API_URL}/chat/tools`, {
     method: "POST",
 
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
 
     body: JSON.stringify({
       chat_id: chatId,

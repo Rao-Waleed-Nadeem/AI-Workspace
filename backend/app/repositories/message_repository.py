@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models import Message
+from app.models import Message, Chat
 
 
 def create_message(
@@ -28,11 +28,12 @@ def create_message(
 def get_chat_messages(
     db: Session,
     chat_id: int,
+    user_id: int,
 ):
 
     return (
         db.query(Message)
-        .filter(Message.chat_id == chat_id)
+        .filter(Message.chat_id == chat_id, Chat.user_id == user_id)
         .order_by(Message.created_at.asc())
         .all()
     )
