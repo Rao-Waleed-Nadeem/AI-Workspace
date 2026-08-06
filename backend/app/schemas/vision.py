@@ -6,3 +6,5 @@ class VisionChatRequest(BaseModel):
     message: str
     image_url: HttpUrl
 
+from pydantic import BaseModel
+

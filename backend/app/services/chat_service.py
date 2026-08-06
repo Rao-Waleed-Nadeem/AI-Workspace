@@ -1,3 +1,4 @@
+from email.mime import image
 import json
 
 from app.tools.definitions import CALCULATOR_TOOL
@@ -10,6 +11,17 @@ from fastapi import HTTPException
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
+)
+
+from fastapi import UploadFile
+
+from app.utils.image_validator import (
+    validate_image,
+    validate_size,
+)
+
+from app.utils.image_encoder import (
+    encode_image,
 )
 
 from app.providers.groq_provider import GroqProvider
@@ -401,7 +413,7 @@ class ChatService:
                 tool_result = tool(**arguments)
 
                 conversation.append(response_message)
-               
+
                 conversation.append(
                     {
                         "role": "tool",
@@ -438,5 +450,102 @@ class ChatService:
 
         except Exception:
 
+            db.rollback()
+            raise
+
+    async def generate_vision_response(
+        self,
+        db: Session,
+        request: ChatRequest,
+        image: UploadFile,
+        user_id: int,
+    ):
+        await validate_size(image)
+
+        await validate_image(image)
+
+        image_data = await encode_image(image)
+
+        try:
+            if request.chat_id is None:
+
+                chat = create_chat(
+                    db=db,
+                    title="New Chat",
+                    user_id=user_id,
+                )
+                print("chat", chat)
+
+            else:
+
+                chat = get_chat(
+                    db=db,
+                    chat_id=request.chat_id,
+                    user_id=user_id,
+                )
+                print("chat", chat)
+
+                if chat is None:
+
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Chat not found",
+                    )
+
+            user_message = create_message(
+                db=db,
+                chat_id=chat.id,
+                role="user",
+                content=request.message,
+            )
+
+            history = get_chat_messages(
+                db=db,
+                chat_id=chat.id,
+                user_id=user_id,
+            )
+
+            conversation = []
+
+            for message in history:
+                conversation.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": message.content,
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": image_data,
+                                },
+                            },
+                        ],
+                    }
+                )
+
+            reply = provider.generate_vision_response(
+                conversation,
+            )
+
+            create_message(
+                db=db,
+                chat_id=chat.id,
+                role="assistant",
+                content=reply,
+            )
+
+            db.commit()
+
+            print("reply", reply)
+
+            return ChatResponse(
+                chat_id=chat.id,
+                message=reply,
+            )
+
+        except Exception:
             db.rollback()
             raise

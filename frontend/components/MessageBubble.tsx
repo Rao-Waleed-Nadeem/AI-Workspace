@@ -18,6 +18,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         }`}
       >
         {isUser ? (
+          
           message.content
         ) : (
           <ReactMarkdown

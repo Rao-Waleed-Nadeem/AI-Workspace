@@ -111,12 +111,9 @@ export async function sendMessage(
 }
 
 export async function getChatMessages(chatId: number) {
-  const response = await fetch(
-    `${API_URL}/chat/${chatId}/messages`,
-    {
-      headers: getAuthHeaders(),
-    },
-  );
+  const response = await fetch(`${API_URL}/chat/${chatId}/messages`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load chat messages");
@@ -150,10 +147,7 @@ export async function analyzeMessage(
   return response.json();
 }
 
-export async function sendToolMessage(
-  message: string,
-  chatId: number | null,
-) {
+export async function sendToolMessage(message: string, chatId: number | null) {
   const response = await fetch(`${API_URL}/chat/tools`, {
     method: "POST",
 
@@ -172,6 +166,40 @@ export async function sendToolMessage(
     console.error("Tool API error:", errorText);
 
     throw new Error("Failed to send tool message");
+  }
+
+  return response.json();
+}
+
+export async function sendVisionMessage(
+  chatId: number | null,
+  message: string,
+  image: File,
+): Promise<{
+  chat_id: number;
+  message: string;
+}> {
+  const formData = new FormData();
+
+  formData.append("message", message);
+
+  if (chatId !== null) {
+    formData.append("chat_id", chatId.toString());
+  }
+
+  formData.append("image", image);
+
+  const authHeaders = getAuthHeaders();
+  delete authHeaders["Content-Type"];
+
+  const response = await fetch(`${API_URL}/chat/vision`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to send vision message");
   }
 
   return response.json();

@@ -100,3 +100,15 @@ class GroqProvider(BaseAIProvider):
         print("TOOL CALLS:", message.tool_calls)
 
         return message
+
+    def generate_vision_response(
+        self,
+        messages: list[dict],
+    ) -> str:
+
+        completion = self.client.chat.completions.create(
+            model=settings.VISION_MODEL_NAME,
+            messages=messages,
+        )
+
+        return completion.choices[0].message.content

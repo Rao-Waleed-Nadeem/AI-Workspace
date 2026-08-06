@@ -69,7 +69,7 @@ export function getAccessToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
-export function getAuthHeaders(): HeadersInit {
+export function getAuthHeaders(): Record<string, string> {
   const token = getAccessToken();
 
   if (!token) {

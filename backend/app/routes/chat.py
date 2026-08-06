@@ -2,6 +2,10 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.services.chat_service import ChatService
 
+from fastapi import UploadFile
+from fastapi import File
+from fastapi import Form
+
 from app.core.dependencies import get_current_user
 from app.models import User
 
@@ -57,7 +61,7 @@ def stream_response(
 def get_chat_messages(
     chat_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     return chat_service.get_messages(
         db=db,
@@ -79,15 +83,36 @@ def structured_chat(
         user_id=current_user.id,
     )
 
+
 @router.post("/chat/tools")
 def tool_chat(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
 
     return chat_service.generate_tool_response(
         db=db,
         request=request,
+        user_id=current_user.id,
+    )
+
+
+@router.post("/chat/vision")
+async def vision_chat(
+    message: str = Form(...),
+    chat_id: int | None = Form(None),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    request = ChatRequest(
+        chat_id=chat_id,
+        message=message,
+    )
+    return await chat_service.generate_vision_response(
+        db=db,
+        request=request,
+        image=image,
         user_id=current_user.id,
     )

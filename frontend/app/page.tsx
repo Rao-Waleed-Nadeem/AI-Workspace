@@ -8,6 +8,7 @@ import {
   getChatMessages,
   analyzeMessage,
   sendToolMessage,
+  sendVisionMessage,
 } from "@/lib/api";
 import { Message } from "@/types/chat";
 import { useAuth } from "@/lib/useAuth";
@@ -19,14 +20,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
   const [action, setAction] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [newChatId, setNewChatId] = useState<number | null>(null);
+  const [text, setText] = useState<string>("");
 
   const router = useRouter();
 
   const { user, loading: authLoading, isAuthenticated } = useAuth();
 
- 
-
-    useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
       return;
     }
@@ -103,23 +105,51 @@ export default function Home() {
     setInput("");
 
     try {
-      const { text, chatId: newChatId } = await sendMessage(
-        message,
-        chatId,
-        (streamedText) => {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantId
-                ? {
-                    ...msg,
-                    content: streamedText,
-                  }
-                : msg,
-            ),
-          );
-        },
-        action,
-      );
+      if (selectedImage) {
+        const response = await sendVisionMessage(
+          chatId,
+          message,
+          selectedImage,
+        );
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: response.message,
+                }
+              : msg,
+          ),
+        );
+
+        // update messages
+
+        setSelectedImage(null);
+      } else {
+        const { text, chatId: newChatId } = await sendMessage(
+          message,
+          chatId,
+          (streamedText) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? {
+                      ...msg,
+                      content: streamedText,
+                    }
+                  : msg,
+              ),
+            );
+          },
+          action,
+        );
+
+        setText(text);
+        setNewChatId(newChatId);
+      }
+
+      setSelectedImage(null);
 
       // Persist the chat_id returned by the backend (important for new chats)
       if (newChatId !== null) {
@@ -224,7 +254,7 @@ export default function Home() {
     }
   };
 
-   if (authLoading) {
+  if (authLoading) {
     return (
       <main className="max-w-3xl mx-auto mt-10">
         <p>Checking authentication...</p>
@@ -321,6 +351,8 @@ export default function Home() {
             <ChatInput
               input={input}
               setInput={setInput}
+              selectedImage={selectedImage}
+              setSelectedImage={setSelectedImage}
               onSend={handleSend}
               isLoading={isLoading}
             />
