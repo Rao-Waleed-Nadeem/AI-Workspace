@@ -1,4 +1,7 @@
 from pydantic import BaseModel
+from pydantic import  ConfigDict
+
+from app.schemas.attachment import AttachmentResponse
 
 
 class ChatRequest(BaseModel):
@@ -8,6 +11,14 @@ class ChatRequest(BaseModel):
     message: str
 
 
+
+
+
 class ChatResponse(BaseModel):
     chat_id: int
     message: str
+    attachments: list[AttachmentResponse] = []
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

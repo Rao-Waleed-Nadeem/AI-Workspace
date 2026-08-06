@@ -80,7 +80,7 @@ export default function Home() {
   }, [authLoading, isAuthenticated, router]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
 
     setIsLoading(true);
 
@@ -90,6 +90,17 @@ export default function Home() {
       id: crypto.randomUUID(),
       role: "user",
       content: message,
+      attachments: selectedImage
+        ? [
+            {
+              attachment_type: "image",
+              original_name: selectedImage.name,
+              mime_type: selectedImage.type,
+              storage_path: URL.createObjectURL(selectedImage),
+              size: selectedImage.size,
+            },
+          ]
+        : [],
     };
 
     const assistantId = crypto.randomUUID();
@@ -98,6 +109,7 @@ export default function Home() {
       id: assistantId,
       role: "assistant",
       content: "",
+      attachments: [],
     };
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -112,6 +124,11 @@ export default function Home() {
           selectedImage,
         );
 
+        if (response.chat_id !== null) {
+          setChatId(response.chat_id);
+          localStorage.setItem("chatId", String(response.chat_id));
+        }
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantId
@@ -122,12 +139,8 @@ export default function Home() {
               : msg,
           ),
         );
-
-        // update messages
-
-        setSelectedImage(null);
       } else {
-        const { text, chatId: newChatId } = await sendMessage(
+        const { text, chatId: returnedChatId } = await sendMessage(
           message,
           chatId,
           (streamedText) => {
@@ -145,30 +158,32 @@ export default function Home() {
           action,
         );
 
-        setText(text);
-        setNewChatId(newChatId);
+        if (returnedChatId !== null) {
+          setChatId(returnedChatId);
+          localStorage.setItem("chatId", String(returnedChatId));
+        }
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: text,
+                }
+              : msg,
+          ),
+        );
       }
+    } catch (error) {
+      console.error(error);
 
-      setSelectedImage(null);
-
-      // Persist the chat_id returned by the backend (important for new chats)
-      if (newChatId !== null) {
-        setChatId(newChatId);
-        localStorage.setItem("chatId", String(newChatId));
-      }
-
-      // Ensure the final complete text is rendered (guards against partial last chunk)
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantId
-            ? {
-                ...msg,
-                content: text,
-              }
-            : msg,
+        prev.filter(
+          (msg) => msg.id !== assistantId && msg.id !== userMessage.id,
         ),
       );
     } finally {
+      setSelectedImage(null);
       setIsLoading(false);
       setAction(null);
     }

@@ -13,6 +13,8 @@ from app.schemas.chat import (
     ChatResponse,
 )
 
+from app.schemas.attachment import AttachmentResponse
+
 from fastapi import UploadFile
 
 from app.utils.image_validator import (
@@ -40,6 +42,9 @@ from app.prompts.prompt_service import (
 from app.repositories.chat_repository import create_chat, get_chat
 
 from app.repositories.message_repository import create_message, get_chat_messages
+from app.repositories.attachment_repository import create_attachment
+from app.routes import chat
+from app.utils.file_storage import save_uploaded_file
 
 provider = GroqProvider()
 
@@ -460,11 +465,9 @@ class ChatService:
         image: UploadFile,
         user_id: int,
     ):
-        await validate_size(image)
+        validate_size(image)
 
-        await validate_image(image)
-
-        image_data = await encode_image(image)
+        validate_image(image)
 
         try:
             if request.chat_id is None:
@@ -492,11 +495,29 @@ class ChatService:
                         detail="Chat not found",
                     )
 
+            saved_file = await save_uploaded_file(
+                image,
+            )
+
             user_message = create_message(
                 db=db,
                 chat_id=chat.id,
                 role="user",
                 content=request.message,
+            )
+
+            attachment = create_attachment(
+                db=db,
+                message_id=user_message.id,
+                attachment_type=saved_file["attachment_type"],
+                mime_type=saved_file["mime_type"],
+                original_name=saved_file["original_name"],
+                storage_path=saved_file["storage_path"],
+                size=saved_file["size"],
+            )
+
+            image_data = await encode_image(
+                image,
             )
 
             history = get_chat_messages(
@@ -507,22 +528,30 @@ class ChatService:
 
             conversation = []
 
-            for message in history:
+            for history_message in history:
+
+                content = [
+                    {
+                        "type": "text",
+                        "text": history_message.content,
+                    }
+                ]
+
+                # Only attach the uploaded image to the CURRENT user message
+                if history_message.id == user_message.id:
+                    content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_data,
+                            },
+                        }
+                    )
+
                 conversation.append(
                     {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": message.content,
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": image_data,
-                                },
-                            },
-                        ],
+                        "role": history_message.role,
+                        "content": content,
                     }
                 )
 
@@ -541,10 +570,14 @@ class ChatService:
 
             print("reply", reply)
 
+            
             return ChatResponse(
-                chat_id=chat.id,
-                message=reply,
-            )
+    chat_id=chat.id,
+    message=reply,
+    attachments=[
+        AttachmentResponse.model_validate(attachment)
+    ],
+)
 
         except Exception:
             db.rollback()

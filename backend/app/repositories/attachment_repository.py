@@ -15,7 +15,7 @@ def create_attachment(
 
     attachment = Attachment(
         message_id=message_id,
-        type=attachment_type,
+        attachment_type=attachment_type,
         mime_type=mime_type,
         original_name=original_name,
         storage_path=storage_path,

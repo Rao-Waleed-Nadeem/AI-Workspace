@@ -1,4 +1,6 @@
 import { getAuthHeaders } from "./auth";
+import { Attachment } from "../types/attachment";
+import { VisionResponse } from "@/types/visionResponse";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -175,10 +177,7 @@ export async function sendVisionMessage(
   chatId: number | null,
   message: string,
   image: File,
-): Promise<{
-  chat_id: number;
-  message: string;
-}> {
+): Promise<VisionResponse> {
   const formData = new FormData();
 
   formData.append("message", message);
@@ -202,5 +201,7 @@ export async function sendVisionMessage(
     throw new Error("Failed to send vision message");
   }
 
-  return response.json();
+  const data: VisionResponse = await response.json();
+
+  return data;
 }

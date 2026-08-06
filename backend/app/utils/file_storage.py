@@ -1,29 +1,44 @@
-import shutil
-import tempfile
 from pathlib import Path
+from uuid import uuid4
+
 from fastapi import UploadFile
 
 
-def save_temp_image(image: UploadFile) -> Path:
+UPLOAD_DIR = Path("uploads/images")
 
-    suffix = Path(image.filename).suffix
 
-    temp = tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=suffix,
+async def save_uploaded_file(
+    image: UploadFile,
+):
+
+    UPLOAD_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
     )
 
-    with temp:
+    extension = Path(
+        image.filename,
+    ).suffix
 
-        shutil.copyfileobj(
-            image.file,
-            temp,
-        )
+    filename = f"{uuid4()}{extension}"
 
-    return Path(temp.name)
+    filepath = UPLOAD_DIR / filename
 
-def delete_temp_image(path: Path):
+    contents = await image.read()
 
-    if path.exists():
+    with open(
+        filepath,
+        "wb",
+    ) as file:
 
-        path.unlink()
+        file.write(contents)
+
+    await image.seek(0)
+
+    return {
+        "attachment_type": "image",
+        "original_name": image.filename,
+        "mime_type": image.content_type,
+        "storage_path": str(filepath),
+        "size": len(contents),
+    }

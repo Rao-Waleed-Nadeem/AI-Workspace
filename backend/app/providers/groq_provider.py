@@ -5,7 +5,6 @@ from app.core.config import settings
 from app.providers.base_provider import (
     BaseAIProvider,
 )
-# from backend.app import tools
 
 
 class GroqProvider(BaseAIProvider):

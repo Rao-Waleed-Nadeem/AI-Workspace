@@ -35,3 +35,9 @@ class Message(Base):
         "Chat",
         back_populates="messages",
     )
+
+    attachments = relationship(
+    "Attachment",
+    back_populates="message",
+    cascade="all, delete-orphan",
+)
