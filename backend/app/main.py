@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.chat import router
 from app.routes.auth import router as auth_router
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -24,3 +25,9 @@ def root():
     return {
         "message": "Hello AI Workspace"
     }
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
+)

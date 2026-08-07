@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 type ChatInputProps = {
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
-  selectedImage: File | null;
-  setSelectedImage: React.Dispatch<React.SetStateAction<File | null>>;
+  selectedFile: File | null;
+  setSelectedFile: React.Dispatch<React.SetStateAction<File | null>>;
   onSend: () => void;
   isLoading: boolean;
 };
@@ -12,8 +12,8 @@ type ChatInputProps = {
 export default function ChatInput({
   input,
   setInput,
-  selectedImage,
-  setSelectedImage,
+  selectedFile,
+  setSelectedFile,
   onSend,
   isLoading,
 }: ChatInputProps) {
@@ -23,8 +23,8 @@ export default function ChatInput({
       <label htmlFor="image-upload" className="cursor-pointer">
         📎
       </label>
-      {selectedImage && (
-        <div className="text-sm text-gray-500">{selectedImage.name}</div>
+      {selectedFile && (
+        <div className="text-sm text-gray-500">{selectedFile.name}</div>
       )}
       <input
         disabled={isLoading}
@@ -42,7 +42,7 @@ export default function ChatInput({
         onChange={(e) => {
           if (!e.target.files?.length) return;
 
-          setSelectedImage(e.target.files[0]);
+          setSelectedFile(e.target.files[0]);
         }}
       />
 

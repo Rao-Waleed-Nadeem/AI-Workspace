@@ -1,6 +1,6 @@
 import { getAuthHeaders } from "./auth";
 import { Attachment } from "../types/attachment";
-import { VisionResponse } from "@/types/visionResponse";
+import { Message } from "@/types/chat";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -121,6 +121,8 @@ export async function getChatMessages(chatId: number) {
     throw new Error("Failed to load chat messages");
   }
 
+  // console.log("getChatMessages response", response);
+
   return response.json();
 }
 
@@ -177,7 +179,7 @@ export async function sendVisionMessage(
   chatId: number | null,
   message: string,
   image: File,
-): Promise<VisionResponse> {
+): Promise<{ chat_id: number; message: string; attachments: Attachment[] }> {
   const formData = new FormData();
 
   formData.append("message", message);
@@ -201,7 +203,9 @@ export async function sendVisionMessage(
     throw new Error("Failed to send vision message");
   }
 
-  const data: VisionResponse = await response.json();
+  const data = await response.json();
+
+  console.log("Vision API response:", data);
 
   return data;
 }

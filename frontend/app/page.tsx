@@ -20,9 +20,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatId, setChatId] = useState<number | null>(null);
   const [action, setAction] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [newChatId, setNewChatId] = useState<number | null>(null);
-  const [text, setText] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const router = useRouter();
 
@@ -55,14 +53,34 @@ export default function Home() {
             id: number;
             role: "user" | "assistant";
             content: string;
+            attachments?: {
+              id: number;
+              attachment_type: string;
+              original_name: string;
+              mime_type: string;
+              storage_path: string;
+              size: number;
+            }[];
           }) => ({
             id: String(message.id),
             role: message.role,
             content: message.content,
+            attachments:
+              message.attachments?.map((attachment) => ({
+                id: attachment.id,
+                attachment_type: attachment.attachment_type,
+                original_name: attachment.original_name,
+                mime_type: attachment.mime_type,
+                storage_path: attachment.storage_path,
+                size: attachment.size,
+              })) ?? [],
           }),
         );
 
         setMessages(restoredMessages);
+
+        console.log("Restored chat ID:", id);
+        console.log("Stored messages:", restoredMessages);
       })
       .catch((error) => {
         console.error("Failed to restore chat:", error);
@@ -80,30 +98,28 @@ export default function Home() {
   }, [authLoading, isAuthenticated, router]);
 
   const handleSend = async () => {
-    if ((!input.trim() && !selectedImage) || isLoading) return;
+    if ((!input.trim() && !selectedFile) || isLoading) return;
 
     setIsLoading(true);
 
     const message = input;
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: message,
-      attachments: selectedImage
-        ? [
-            {
-              attachment_type: "image",
-              original_name: selectedImage.name,
-              mime_type: selectedImage.type,
-              storage_path: URL.createObjectURL(selectedImage),
-              size: selectedImage.size,
-            },
-          ]
-        : [],
-    };
+    // Temporary frontend attachment.
+    // The negative ID makes it impossible to conflict
+    // with a real database attachment ID.
+    const temporaryAttachment = selectedFile
+      ? {
+          id: -Date.now(),
+          attachment_type: "image",
+          original_name: selectedFile.name,
+          mime_type: selectedFile.type,
+          storage_path: URL.createObjectURL(selectedFile),
+          size: selectedFile.size,
+        }
+      : undefined;
 
     const assistantId = crypto.randomUUID();
+    const userMessageId = crypto.randomUUID();
 
     const assistantMessage: Message = {
       id: assistantId,
@@ -112,33 +128,62 @@ export default function Home() {
       attachments: [],
     };
 
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+      attachments: temporaryAttachment ? [temporaryAttachment] : [],
+    };
+
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
     setInput("");
 
     try {
-      if (selectedImage) {
-        const response = await sendVisionMessage(
-          chatId,
-          message,
-          selectedImage,
-        );
+      if (selectedFile) {
+        const response = await sendVisionMessage(chatId, message, selectedFile);
 
-        if (response.chat_id !== null) {
-          setChatId(response.chat_id);
-          localStorage.setItem("chatId", String(response.chat_id));
-        }
+        // if (response.chat_id !== null) {
+        //   setChatId(response.chat_id);
+        //   localStorage.setItem("chatId", String(response.chat_id));
+        // }
 
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantId
-              ? {
-                  ...msg,
-                  content: response.message,
-                }
-              : msg,
-          ),
+          prev.map((msg) => {
+            if (msg.id === userMessageId) {
+              return {
+                ...msg,
+                attachments: response.attachments ?? [],
+              };
+            }
+
+            if (msg.id === assistantId) {
+              return {
+                ...msg,
+                content: response.message,
+              };
+            }
+
+            return msg;
+          }),
         );
+
+        // ---------------------------------------------
+        // Release temporary browser object URL
+        // ---------------------------------------------
+
+        if (temporaryAttachment) {
+          URL.revokeObjectURL(temporaryAttachment.storage_path);
+        }
+
+        setSelectedFile(null);
+
+        setChatId(response.chat_id);
+        localStorage.setItem("chatId", String(response.chat_id));
+
+        setSelectedFile(null);
+
+        return;
       } else {
         const { text, chatId: returnedChatId } = await sendMessage(
           message,
@@ -177,13 +222,14 @@ export default function Home() {
     } catch (error) {
       console.error(error);
 
+      // Remove optimistic messages if request fails
       setMessages((prev) =>
         prev.filter(
-          (msg) => msg.id !== assistantId && msg.id !== userMessage.id,
+          (msg) => msg.id !== userMessageId && msg.id !== assistantId,
         ),
       );
     } finally {
-      setSelectedImage(null);
+      setSelectedFile(null);
       setIsLoading(false);
       setAction(null);
     }
@@ -366,8 +412,8 @@ export default function Home() {
             <ChatInput
               input={input}
               setInput={setInput}
-              selectedImage={selectedImage}
-              setSelectedImage={setSelectedImage}
+              selectedFile={selectedFile}
+              setSelectedFile={setSelectedFile}
               onSend={handleSend}
               isLoading={isLoading}
             />

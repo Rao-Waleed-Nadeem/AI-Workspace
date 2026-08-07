@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import Message, Chat
 
@@ -33,7 +33,12 @@ def get_chat_messages(
 
     return (
         db.query(Message)
-        .filter(Message.chat_id == chat_id, Chat.user_id == user_id)
-        .order_by(Message.created_at.asc())
+        .options(joinedload(Message.attachments))
+        .join(Chat, Message.chat_id == Chat.id)
+        .filter(
+            Message.chat_id == chat_id,
+            Chat.user_id == user_id,
+        )
+        .order_by(Message.id.asc())
         .all()
     )

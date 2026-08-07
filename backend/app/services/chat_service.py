@@ -465,7 +465,7 @@ class ChatService:
         image: UploadFile,
         user_id: int,
     ):
-        validate_size(image)
+        await validate_size(image)
 
         validate_image(image)
 
@@ -526,6 +526,8 @@ class ChatService:
                 user_id=user_id,
             )
 
+            history = history[-4:]
+
             conversation = []
 
             for history_message in history:
@@ -570,14 +572,11 @@ class ChatService:
 
             print("reply", reply)
 
-            
             return ChatResponse(
-    chat_id=chat.id,
-    message=reply,
-    attachments=[
-        AttachmentResponse.model_validate(attachment)
-    ],
-)
+                chat_id=chat.id,
+                message=reply,
+                attachments=[AttachmentResponse.model_validate(attachment)],
+            )
 
         except Exception:
             db.rollback()
