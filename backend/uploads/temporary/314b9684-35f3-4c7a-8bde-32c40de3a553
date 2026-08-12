@@ -1,0 +1,450 @@
+Yes — and I want to be **extra careful with Stage 12**, because this is where we stop treating the CoinDesk scraper as a learning script and start turning it into a **real production-grade scraping system**. The master roadmap explicitly puts architecture, configuration, scheduling, logging, retries, monitoring, alerts, and metrics here, immediately before the multi-source financial-data stage.
+
+I’d keep it to **4 lessons**, but unlike earlier stages, these lessons will be substantial implementation milestones.
+
+# 🚀 Stage 12 — Production Scrapers
+
+**Goal:** Transform our working CoinDesk scraper into a **maintainable, configurable, observable, schedulable production pipeline** that can later support many financial data sources.
+
+The architecture we are aiming toward is roughly:
+
+```text
+                    ┌──────────────────┐
+                    │    Scheduler     │
+                    └────────┬─────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │   Scraper Job    │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+         HTTP/API       Browser        Configuration
+              │              │
+              └───────┬──────┘
+                      ▼
+                  Extraction
+                      │
+                      ▼
+              Validation/Cleaning
+                      │
+                      ▼
+                   Storage
+                      │
+            ┌─────────┴─────────┐
+            ▼                   ▼
+         Metrics              Logs
+            │                   │
+            └─────────┬─────────┘
+                      ▼
+                   Alerts
+```
+
+---
+
+# 📚 Lesson 1 — Production Project Architecture + Configuration ⭐⭐⭐⭐⭐
+
+This is the **foundation** of Stage 12.
+
+### Project Architecture
+
+We'll redesign the existing CoinDesk project around clear responsibilities:
+
+```text
+coindesk_scraper/
+│
+├── config/
+│   ├── settings.py
+│   └── logging.py
+│
+├── clients/
+│   ├── http_client.py
+│   └── api_client.py
+│
+├── scrapers/
+│   ├── article_scraper.py
+│   └── ...
+│
+├── parsers/
+│
+├── validators/
+│
+├── storage/
+│
+├── models/
+│
+├── jobs/
+│
+├── monitoring/
+│
+├── tests/
+│
+├── scripts/
+│
+├── main.py
+├── .env
+├── .env.example
+├── requirements.txt
+└── README.md
+```
+
+We'll decide carefully what actually belongs in each layer rather than creating folders just for the sake of "clean architecture."
+
+### Configuration
+
+* Configuration vs hardcoded values
+* Development vs production configuration
+* Environment variables
+* `.env`
+* `.env.example`
+* Configuration objects
+* URLs
+* Timeouts
+* Retry settings
+* Rate limits
+* Storage configuration
+
+### Secrets 🔐
+
+* API keys
+* Passwords
+* Tokens
+* Database credentials
+* Secret management principles
+* `.gitignore`
+* Never committing secrets
+* Secret rotation basics
+
+**Important:** `.env` is convenient for local development, but it is **not a complete production secret-management strategy**.
+
+---
+
+# 📚 Lesson 2 — Scheduling + Reliable Job Execution ⭐⭐⭐⭐⭐
+
+Now we make the scraper run **without manually executing `python main.py`**.
+
+### Scheduling Fundamentals
+
+* Why scheduling exists
+* Periodic jobs
+* Job frequency
+* Dependencies
+* Idempotent jobs
+* Backfills
+* Failure recovery
+
+### Cron
+
+* Cron concept
+* Cron expressions
+* Scheduling Python jobs
+* Logs from scheduled jobs
+* When Cron is enough
+
+### Airflow
+
+* What Airflow solves
+* DAGs
+* Tasks
+* Dependencies
+* Scheduling
+* Retries
+* Backfills
+* Monitoring
+
+### Prefect
+
+* What Prefect solves
+* Flows
+* Tasks
+* Scheduling
+* Retries
+* Observability
+
+### Decision
+
+We won't deeply learn **three schedulers**.
+
+We'll understand:
+
+```text
+Simple single-machine job
+        ↓
+       Cron
+
+Growing workflow
+        ↓
+ Airflow / Prefect
+```
+
+We'll then choose **one orchestration approach** when we build the production version rather than unnecessarily implementing all three.
+
+---
+
+# 📚 Lesson 3 — Logging, Errors, Retries & Reliability ⭐⭐⭐⭐⭐
+
+This is where the scraper becomes **operationally trustworthy**.
+
+### Logging
+
+* Why `print()` isn't enough
+* Log levels
+
+  * DEBUG
+  * INFO
+  * WARNING
+  * ERROR
+  * CRITICAL
+* Structured logging
+* Timestamps
+* Request/job context
+* Log files
+* Log rotation
+* What should and shouldn't be logged
+
+Example:
+
+```text
+2026-08-10 10:00:01 INFO  Job started
+2026-08-10 10:00:02 INFO  Fetching CoinDesk articles
+2026-08-10 10:00:03 INFO  42 articles discovered
+2026-08-10 10:00:04 WARNING  2 records failed validation
+2026-08-10 10:00:05 INFO  40 records stored
+2026-08-10 10:00:05 INFO  Job completed
+```
+
+### Error Handling
+
+Separate:
+
+```text
+Expected failure
+      vs
+Unexpected failure
+```
+
+Examples:
+
+* HTTP 404
+* HTTP 429
+* HTTP 500
+* Timeout
+* Connection failure
+* Parser failure
+* Validation failure
+* Database failure
+
+### Retry Systems
+
+Build on your Stage 4 retry knowledge:
+
+* Retryable vs non-retryable errors
+* Exponential backoff
+* Maximum attempts
+* Retry-after
+* Avoiding infinite retries
+* Failure isolation
+* Dead-letter/error records concept
+
+### Reliability Principles
+
+* Idempotency
+* Graceful failure
+* Resource cleanup
+* Partial failure handling
+* Resume/recovery behavior
+
+---
+
+# 📚 Lesson 4 — Monitoring, Metrics, Alerts + Production CoinDesk ⭐⭐⭐⭐⭐
+
+This is the **final integration lesson**.
+
+A production scraper shouldn't simply finish or crash.
+
+We need to know:
+
+> **Is it actually working correctly?**
+
+### Metrics
+
+Track things such as:
+
+```text
+scrape_jobs_total
+scrape_jobs_success
+scrape_jobs_failed
+
+requests_total
+requests_failed
+http_429_total
+
+records_discovered
+records_valid
+records_invalid
+records_duplicate
+
+scrape_duration
+storage_duration
+
+missing_value_rate
+duplicate_rate
+```
+
+### Monitoring
+
+Monitor:
+
+* Job success/failure
+* Runtime
+* Request failures
+* HTTP status distribution
+* Record counts
+* Data freshness
+* Validation failures
+* Storage failures
+* Unexpected drops in data volume
+
+### Alerts 🚨
+
+Alert when something actually requires attention:
+
+```text
+Job failed
+      ↓
+Alert
+
+OR
+
+0 articles collected
+      ↓
+Alert
+
+OR
+
+HTTP 429 spike
+      ↓
+Alert
+
+OR
+
+Data quality suddenly drops
+      ↓
+Alert
+```
+
+Avoid creating alerts for every minor warning.
+
+---
+
+# 🏗️ Final CoinDesk Production Project
+
+At the end of Stage 12, we'll **refactor the existing CoinDesk implementation**, not create another toy scraper.
+
+The evolution should be:
+
+### Current
+
+```text
+CoinDesk
+   ↓
+Scraper
+   ↓
+Parser
+   ↓
+Validation
+   ↓
+Storage
+```
+
+### After Stage 12
+
+```text
+                    Scheduler
+                       │
+                       ▼
+                  Scrape Job
+                       │
+          ┌────────────┴────────────┐
+          ▼                         ▼
+      API/HTTP                  Playwright
+          │                         │
+          └────────────┬────────────┘
+                       ▼
+                    Parser
+                       │
+                       ▼
+              Validation/Cleaning
+                       │
+                       ▼
+                 Deduplication
+                       │
+                       ▼
+                    Storage
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+        Logs        Metrics       Errors
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                    Alerts
+```
+
+And critically, we'll keep the responsibilities separated:
+
+```text
+Configuration
+      ↓
+Collection
+      ↓
+Parsing
+      ↓
+Validation
+      ↓
+Storage
+      ↓
+Observability
+      ↓
+Scheduling
+```
+
+This follows the roadmap's broader engineering philosophy: modular, reusable, maintainable components rather than one giant scraper script. 
+
+---
+
+# 📊 Stage 12 — Final Structure
+
+| #     | Lesson                        | Main Focus                              |
+| ----- | ----------------------------- | --------------------------------------- |
+| **1** | Architecture + Configuration  | Project structure, config, secrets, env |
+| **2** | Scheduling + Job Execution    | Cron, Airflow, Prefect, idempotency     |
+| **3** | Logging + Reliability         | Logs, errors, retries, recovery         |
+| **4** | Monitoring + Alerts + Metrics | Observability + production CoinDesk     |
+
+### 🎯 After Stage 12
+
+You won't just have a scraper that **works**.
+
+You'll have a scraper that can:
+
+* ✅ Run automatically.
+* ✅ Be configured without changing code.
+* ✅ Keep secrets out of source code.
+* ✅ Recover from transient failures.
+* ✅ Produce useful logs.
+* ✅ Track operational metrics.
+* ✅ Detect data-quality/collection failures.
+* ✅ Alert when human intervention is needed.
+* ✅ Be maintained and extended without rewriting everything.
+
+## ⚠️ One important decision for the next two stages
+
+I would **not** turn CoinDesk into an over-engineered distributed system yet.
+
+We'll build a **modular production architecture first**, prove it locally, then introduce orchestration/containers/infrastructure only where the workload actually requires it.
+
+That's important because **Stage 13 is the big transition**: we're going from one source (CoinDesk) to a **multi-source financial data collection platform**. The roadmap explicitly places Federal Reserve, ECB, BOE, BOJ, BLS, FRED, Treasury, ForexFactory, SEC, Yahoo Finance, Binance, CoinGecko, and many others after the production-scraper foundation. 
+
+So **Stage 12 + Stage 13 together are the architecture-defining part of the course**. We should prioritize correctness, clean boundaries, and extensibility over adding fancy infrastructure too early. 🚀

@@ -4,23 +4,48 @@ from uuid import uuid4
 from fastapi import HTTPException, UploadFile
 
 from app.core.config import settings
+from app.utils.document_validator import (
+    sanitize_filename,
+    validate_content_type,
+    validate_extension,
+    validate_pdf_signature,
+    validate_size,
+)
 
 
 CHUNK_SIZE = 1024 * 1024
 
 
-async def save_temporary_upload(
+async def save_document_upload(
     file: UploadFile,
 ) -> dict:
 
-    upload_dir = Path(settings.UPLOAD_DIR)
+    original_name = sanitize_filename(
+        file.filename,
+    )
+
+    validate_extension(
+        original_name,
+    )
+
+    validate_content_type(
+        file.content_type,
+    )
+
+    await validate_pdf_signature(
+        file,
+    )
+
+    upload_dir = Path(
+        settings.TEMP_UPLOAD_DIR,
+    )
 
     upload_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    storage_name = str(uuid4())
+    storage_name = f"{uuid4()}.pdf"
 
     storage_path = upload_dir / storage_name
 
@@ -30,18 +55,18 @@ async def save_temporary_upload(
         with storage_path.open("wb") as destination:
 
             while True:
-                chunk = await file.read(CHUNK_SIZE)
+                chunk = await file.read(
+                    CHUNK_SIZE,
+                )
 
                 if not chunk:
                     break
 
                 total_size += len(chunk)
 
-                if total_size > settings.MAX_UPLOAD_SIZE:
-                    raise HTTPException(
-                        status_code=413,
-                        detail="Uploaded file exceeds the maximum allowed size.",
-                    )
+                validate_size(
+                    total_size,
+                )
 
                 destination.write(chunk)
 
@@ -55,9 +80,9 @@ async def save_temporary_upload(
         await file.close()
 
     return {
+        "original_name": original_name,
         "storage_name": storage_name,
-        "original_name": file.filename,
-        "content_type": file.content_type,
-        "size": total_size,
         "storage_path": str(storage_path),
+        "mime_type": file.content_type,
+        "size": total_size,
     }
