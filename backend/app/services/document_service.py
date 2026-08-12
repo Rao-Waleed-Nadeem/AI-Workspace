@@ -3,10 +3,14 @@ import shutil
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.core.config import settings
 from app.repositories.document_repository import (
     create_document,
+    delete_document,
+    get_document_by_id,
+    get_documents_by_user,
 )
 from app.services.file_upload_service import (
     save_document_upload,
@@ -82,3 +86,73 @@ async def process_document_upload(
             temporary_path.unlink()
 
         raise
+
+
+def list_user_documents(
+    db: Session,
+    user_id: int,
+):
+
+    return get_documents_by_user(
+        db=db,
+        user_id=user_id,
+    )
+
+def get_user_document(
+    db: Session,
+    document_id: int,
+    user_id: int,
+):
+
+    document = get_document_by_id(
+        db=db,
+        document_id=document_id,
+        user_id=user_id,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found.",
+        )
+
+    return document
+
+def remove_user_document(
+    db: Session,
+    document_id: int,
+    user_id: int,
+):
+
+    document = get_document_by_id(
+        db=db,
+        document_id=document_id,
+        user_id=user_id,
+    )
+
+    if document is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found.",
+        )
+
+    storage_path = Path(
+        document.storage_path,
+    )
+
+    delete_document(
+        db=db,
+        document=document,
+    )
+
+    try:
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    if storage_path.exists():
+        storage_path.unlink()
+
+        
