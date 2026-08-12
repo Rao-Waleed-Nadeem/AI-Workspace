@@ -129,7 +129,7 @@ export default function Home() {
     };
 
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: userMessageId,
       role: "user",
       content: message,
       attachments: temporaryAttachment ? [temporaryAttachment] : [],
