@@ -20,3 +20,7 @@ Thumbs.db
 
 # PostgreSQL data
 docker/postgres/
+
+# Backend runtime uploads
+/backend/uploads/
+
