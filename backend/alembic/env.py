@@ -1,5 +1,12 @@
 from app.database import Base
-from app.models import Chat, Message, User
+from app.models import (
+    Chat,
+    Message,
+    User,
+    Attachment,
+    Document,
+    DocumentChunk,
+)
 from app.core.config import settings
 from logging.config import fileConfig
 

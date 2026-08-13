@@ -1,3 +1,4 @@
+from csv import reader
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -23,20 +24,25 @@ def extract_pdf_text(
 
         pages = []
 
-        for page in reader.pages:
+        for page_number, page in enumerate(
+            reader.pages,
+            start=1,
+        ):
             text = page.extract_text() or ""
 
             pages.append(
-                text,
+                {
+                    "page_number": page_number,
+                    "text": text,
+                }
             )
 
-        extracted_text = "\n\n".join(
-            pages,
-        ).strip()
+        extracted_text = "\n\n".join(page["text"] for page in pages).strip()
 
         return {
             "text": extracted_text,
             "page_count": len(reader.pages),
+            "pages": pages,
         }
 
     except Exception as exc:

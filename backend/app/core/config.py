@@ -43,5 +43,12 @@ class Settings:
             "sentence-transformers/all-MiniLM-L6-v2",
         )
 
+        self.EMBEDDING_DIMENSIONS = int(
+            os.getenv(
+                "EMBEDDING_DIMENSIONS",
+                "384",
+            )
+        )
+
 
 settings = Settings()
