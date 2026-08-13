@@ -29,5 +29,19 @@ class Settings:
             )
         )
 
+        self.EMBEDDING_PROVIDER = os.getenv(
+            "EMBEDDING_PROVIDER",
+            "huggingface",
+        )
+
+        self.HF_TOKEN = os.getenv(
+            "HF_TOKEN",
+        )
+
+        self.EMBEDDING_MODEL = os.getenv(
+            "EMBEDDING_MODEL",
+            "sentence-transformers/all-MiniLM-L6-v2",
+        )
+
 
 settings = Settings()
