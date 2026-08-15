@@ -23,6 +23,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
         self.client = InferenceClient(
             provider="hf-inference",
             api_key=settings.HF_TOKEN,
+            model=settings.EMBEDDING_MODEL,
         )
 
     def embed_texts(

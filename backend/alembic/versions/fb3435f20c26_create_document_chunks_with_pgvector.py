@@ -1,4 +1,4 @@
-import pgvector
+from pgvector.sqlalchemy import VECTOR
 
 """create document chunks with pgvector
 
@@ -32,7 +32,7 @@ def upgrade() -> None:
     sa.Column('section_title', sa.String(length=500), nullable=True),
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('embedding_model', sa.String(length=255), nullable=False),
-    sa.Column('embedding', pgvector.sqlalchemy.vector.VECTOR(dim=384), nullable=False),
+    sa.Column('embedding',VECTOR(dim=384), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),

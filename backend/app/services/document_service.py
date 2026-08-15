@@ -18,6 +18,10 @@ from app.services.file_upload_service import (
 from app.utils.pdf_extractor import (
     extract_pdf_text,
 )
+from app.repositories.document_chunk_repository import (
+    create_document_chunks,
+)
+from app.services.embedding_service import EmbeddingService
 
 
 async def process_document_upload(
@@ -48,10 +52,7 @@ async def process_document_upload(
             exist_ok=True,
         )
 
-        final_path = (
-            document_dir
-            / uploaded_file["storage_name"]
-        )
+        final_path = document_dir / uploaded_file["storage_name"]
 
         shutil.move(
             str(temporary_path),
@@ -61,18 +62,26 @@ async def process_document_upload(
         document = create_document(
             db=db,
             user_id=user_id,
-            original_name=uploaded_file[
-                "original_name"
-            ],
-            mime_type=uploaded_file[
-                "mime_type"
-            ],
+            original_name=uploaded_file["original_name"],
+            mime_type=uploaded_file["mime_type"],
             storage_path=str(final_path),
             size=uploaded_file["size"],
-            page_count=extracted[
-                "page_count"
-            ],
+            page_count=extracted["page_count"],
             extracted_text=extracted["text"],
+        )
+
+        embedding_service = EmbeddingService()
+
+        embedded_chunks = embedding_service.embed_document_pages(
+            extracted["pages"],
+        )
+
+        create_document_chunks(
+            db=db,
+            document_id=document.id,
+            user_id=user_id,
+            chunks=embedded_chunks,
+            embedding_model=embedding_service.model_name,
         )
 
         db.commit()
@@ -98,6 +107,7 @@ def list_user_documents(
         user_id=user_id,
     )
 
+
 def get_user_document(
     db: Session,
     document_id: int,
@@ -117,6 +127,7 @@ def get_user_document(
         )
 
     return document
+
 
 def remove_user_document(
     db: Session,
@@ -154,5 +165,3 @@ def remove_user_document(
 
     if storage_path.exists():
         storage_path.unlink()
-
-        

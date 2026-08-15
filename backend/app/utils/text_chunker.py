@@ -6,6 +6,7 @@ import re
 class TextChunk:
     text: str
     chunk_index: int
+    page_number: int | None = None
 
 
 DEFAULT_CHUNK_SIZE = 1000
@@ -191,5 +192,45 @@ def chunk_text(
                 chunk_index=len(chunks),
             )
         )
+
+    return chunks
+
+def chunk_pages(
+    pages: list[dict],
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+) -> list[TextChunk]:
+    """
+    Split page-level PDF text into chunks while preserving
+    the originating page number.
+    """
+
+    _validate_chunk_configuration(
+        chunk_size,
+        chunk_overlap,
+    )
+
+    chunks: list[TextChunk] = []
+
+    for page in pages:
+
+        page_number = page["page_number"]
+        text = page["text"]
+
+        page_chunks = chunk_text(
+            text=text,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+
+        for page_chunk in page_chunks:
+
+            chunks.append(
+                TextChunk(
+                    text=page_chunk.text,
+                    chunk_index=len(chunks),
+                    page_number=page_number,
+                )
+            )
 
     return chunks
