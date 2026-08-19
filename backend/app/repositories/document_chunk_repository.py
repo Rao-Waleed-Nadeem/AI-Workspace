@@ -39,21 +39,44 @@ def search_similar_chunks(
     db: Session,
     *,
     query_embedding: list[float],
+    user_id: int,
+    document_id: int | None = None,
     limit: int = 5,
-) -> list[DocumentChunk]:
+) -> list[tuple[DocumentChunk, float]]:
 
     distance = DocumentChunk.embedding.cosine_distance(
         query_embedding,
     )
 
-    statement = (
-        select(DocumentChunk)
-        .order_by(distance)
-        .limit(limit)
+    similarity = (
+        1 - distance
+    ).label(
+        "similarity",
     )
 
+    statement = (
+        select(
+            DocumentChunk,
+            similarity,
+        )
+        .where(
+            DocumentChunk.user_id == user_id,
+        )
+        .order_by(
+            distance,
+        )
+        .limit(
+            limit,
+        )
+    )
+
+    if document_id is not None:
+        statement = statement.where(
+            DocumentChunk.document_id == document_id,
+        )
+
     return list(
-        db.scalars(
+        db.execute(
             statement,
         ).all()
     )

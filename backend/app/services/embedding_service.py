@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from unittest import result
 from app.core.config import settings
 
 from app.embeddings.base import BaseEmbeddingProvider
