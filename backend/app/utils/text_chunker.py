@@ -13,7 +13,10 @@ DEFAULT_CHUNK_SIZE = 1000
 DEFAULT_CHUNK_OVERLAP = 200
 
 
-def _normalize_text(text: str) -> str:
+def _normalize_text(
+    text: str,
+) -> str:
+
     return re.sub(
         r"\s+",
         " ",
@@ -74,9 +77,114 @@ def _split_sentences(
     ]
 
 
+def _split_long_sentence(
+    sentence: str,
+    chunk_size: int,
+    chunk_overlap: int,
+) -> list[str]:
+    """
+    Split a sentence that is longer than chunk_size.
+
+    The split attempts to happen at word boundaries and
+    preserves the configured overlap between pieces.
+    """
+
+    words = sentence.split()
+
+    if not words:
+        return []
+
+    pieces: list[str] = []
+    current_words: list[str] = []
+
+    for word in words:
+
+        candidate = (
+            word
+            if not current_words
+            else f"{' '.join(current_words)} {word}"
+        )
+
+        if len(candidate) <= chunk_size:
+            current_words.append(word)
+            continue
+
+        if current_words:
+            piece = " ".join(current_words)
+
+            pieces.append(
+                piece,
+            )
+
+            overlap_words: list[str] = []
+            overlap_length = 0
+
+            for overlap_word in reversed(
+                current_words,
+            ):
+
+                additional_length = (
+                    len(overlap_word)
+                    if not overlap_words
+                    else len(overlap_word) + 1
+                )
+
+                if (
+                    overlap_length
+                    + additional_length
+                    > chunk_overlap
+                ):
+                    break
+
+                overlap_words.insert(
+                    0,
+                    overlap_word,
+                )
+
+                overlap_length += additional_length
+
+            current_words = (
+                overlap_words
+                + [word]
+            )
+
+        else:
+            # Handles a single word longer than chunk_size.
+            start = 0
+
+            while start < len(word):
+
+                end = min(
+                    start + chunk_size,
+                    len(word),
+                )
+
+                pieces.append(
+                    word[start:end],
+                )
+
+                if end >= len(word):
+                    break
+
+                start = max(
+                    start + 1,
+                    end - chunk_overlap,
+                )
+
+            current_words = []
+
+    if current_words:
+        pieces.append(
+            " ".join(current_words),
+        )
+
+    return pieces
+
+
 def _build_units(
     text: str,
     chunk_size: int,
+    chunk_overlap: int,
 ) -> list[str]:
 
     paragraphs = _split_paragraphs(
@@ -88,7 +196,9 @@ def _build_units(
     for paragraph in paragraphs:
 
         if len(paragraph) <= chunk_size:
-            units.append(paragraph)
+            units.append(
+                paragraph,
+            )
             continue
 
         sentences = _split_sentences(
@@ -98,25 +208,66 @@ def _build_units(
         for sentence in sentences:
 
             if len(sentence) <= chunk_size:
-                units.append(sentence)
+                units.append(
+                    sentence,
+                )
                 continue
 
-            start = 0
-
-            while start < len(sentence):
-
-                end = min(
-                    start + chunk_size,
-                    len(sentence),
+            units.extend(
+                _split_long_sentence(
+                    sentence=sentence,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
                 )
-
-                units.append(
-                    sentence[start:end].strip()
-                )
-
-                start = end
+            )
 
     return units
+
+
+def _get_overlap_text(
+    text: str,
+    chunk_overlap: int,
+) -> str:
+    """
+    Return an overlap from the end of the current chunk.
+
+    The overlap is selected by complete words instead of
+    cutting the text at an arbitrary character boundary.
+    """
+
+    words = text.split()
+
+    if not words:
+        return ""
+
+    overlap_words: list[str] = []
+    overlap_length = 0
+
+    for word in reversed(words):
+
+        additional_length = (
+            len(word)
+            if not overlap_words
+            else len(word) + 1
+        )
+
+        if (
+            overlap_length
+            + additional_length
+            > chunk_overlap
+        ):
+            break
+
+        overlap_words.insert(
+            0,
+            word,
+        )
+
+        overlap_length += additional_length
+
+    return " ".join(
+        overlap_words,
+    )
 
 
 def chunk_text(
@@ -138,8 +289,9 @@ def chunk_text(
         return []
 
     units = _build_units(
-        normalized_text,
-        chunk_size,
+        text=normalized_text,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
     )
 
     chunks: list[TextChunk] = []
@@ -168,13 +320,10 @@ def chunk_text(
                 )
             )
 
-            overlap_text = current_text[
-                max(
-                    0,
-                    len(current_text)
-                    - chunk_overlap,
-                ):
-            ]
+            overlap_text = _get_overlap_text(
+                text=current_text,
+                chunk_overlap=chunk_overlap,
+            )
 
             current_text = (
                 f"{overlap_text} {unit}".strip()
@@ -194,6 +343,7 @@ def chunk_text(
         )
 
     return chunks
+
 
 def chunk_pages(
     pages: list[dict],
