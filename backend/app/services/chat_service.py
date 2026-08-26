@@ -8,6 +8,13 @@ from httpcore import request
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
+from app.prompts.rag import build_rag_prompt
+from app.services.rag_context_service import (
+    RetrievedChunk,
+    build_rag_context,
+)
+from app.services.retrieval_service import RetrievalService
+
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -50,6 +57,15 @@ provider = GroqProvider()
 
 
 class ChatService:
+
+    def __init__(
+        self,
+        retrieval_service: RetrievalService | None = None,
+    ):
+        self.retrieval_service = (
+            retrieval_service
+            or RetrievalService()
+        )
 
     def generate_response(
         self,
@@ -106,6 +122,43 @@ class ChatService:
                         "content": message.content,
                     }
                 )
+
+            if request.document_id is not None:
+
+                retrieval_results = (
+                    self.retrieval_service.retrieve(
+                        db=db,
+                        question=request.message,
+                        user_id=user_id,
+                        document_id=request.document_id,
+                        top_k=5,
+                    )
+                )
+
+                chunks = [
+                    RetrievedChunk(
+                        document_id=result.document_id,
+                        page_number=result.page_number,
+                        content=result.content,
+                    )
+                    for result in retrieval_results
+                ]
+
+                context = build_rag_context(
+                    chunks,
+                )
+
+                rag_prompt = build_rag_prompt(
+                    context=context,
+                    question=request.message,
+                )
+
+                conversation = [
+                    {
+                        "role": "user",
+                        "content": rag_prompt,
+                    }
+                ]
 
             reply = provider.generate_response(
                 conversation,
