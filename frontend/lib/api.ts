@@ -43,15 +43,8 @@ export async function sendMessage(
   let fullResponse = "";
   let resolvedChatId: number | null = null;
 
-  let resolvedSources: {
-    document_id: number;
-    document_name: string;
-    page_number: number | null;
-  }[] = [];
-
   let buffer = "";
 
-  // Current SSE event
   let currentEventType = "message";
   let currentEventData: string[] = [];
 
@@ -61,7 +54,6 @@ export async function sendMessage(
       return;
     }
 
-    // SSE joins multiple data lines with newline characters
     const data = currentEventData.join("\n");
 
     if (currentEventType === "chat_id") {
@@ -78,7 +70,27 @@ export async function sendMessage(
 
         onChunk(fullResponse);
       } catch (error) {
-        console.error("Failed to parse RAG sources:", error);
+        console.error(
+          "Failed to parse RAG sources:",
+          error,
+        );
+      }
+    } else if (currentEventType === "rag_error") {
+      try {
+        const errorMessage = JSON.parse(data);
+
+        fullResponse = errorMessage;
+
+        onChunk(fullResponse);
+      } catch (error) {
+        console.error(
+          "Failed to parse RAG error:",
+          error,
+        );
+
+        fullResponse = data;
+
+        onChunk(fullResponse);
       }
     } else {
       fullResponse += data;
@@ -97,14 +109,19 @@ export async function sendMessage(
       break;
     }
 
-    buffer += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, {
+      stream: true,
+    });
 
     const lines = buffer.split("\n");
 
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      const normalizedLine = line.replace(/\r$/, "");
+      const normalizedLine = line.replace(
+        /\r$/,
+        "",
+      );
 
       // Blank line = end of SSE event
       if (normalizedLine === "") {
@@ -113,23 +130,30 @@ export async function sendMessage(
       }
 
       if (normalizedLine.startsWith("event:")) {
-        currentEventType = normalizedLine.slice("event:".length).trim();
+        currentEventType = normalizedLine
+          .slice("event:".length)
+          .trim();
 
         continue;
       }
 
       if (normalizedLine.startsWith("data:")) {
-        const raw = normalizedLine.slice("data:".length);
+        const raw = normalizedLine.slice(
+          "data:".length,
+        );
 
-        // SSE removes exactly one optional space after "data:"
-        const payload = raw.startsWith(" ") ? raw.slice(1) : raw;
+        // Remove exactly one optional space.
+        const payload = raw.startsWith(" ")
+          ? raw.slice(1)
+          : raw;
 
         currentEventData.push(payload);
       }
     }
   }
 
-  // Process any final event that did not receive a trailing blank line
+  // Process any final event that does not have
+  // a trailing blank line.
   processEvent();
 
   return {

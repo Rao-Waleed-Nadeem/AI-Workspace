@@ -1,3 +1,4 @@
+from dbm import error
 from email.mime import image
 import json
 
@@ -14,6 +15,15 @@ from app.services.rag_context_service import (
     build_rag_context,
 )
 from app.services.retrieval_service import RetrievalService
+
+from app.services.rag_validation_service import (
+    validate_document_for_rag,
+    validate_retrieval_results,
+)
+
+from app.services.rag_failure_service import (
+    get_rag_failure_message,
+)
 
 
 from app.schemas.chat import (
@@ -54,6 +64,13 @@ from app.repositories.attachment_repository import create_attachment
 from app.routes import chat
 from app.utils.file_storage import save_uploaded_file
 from app.services.rag_citation_service import build_rag_sources, format_rag_sources
+from backend.app.services.rag_exceptions import (
+    DocumentNotFoundError,
+    EmptyDocumentError,
+    InsufficientContextError,
+    NoRelevantContextError,
+    UnsupportedDocumentError,
+)
 
 provider = GroqProvider()
 
@@ -64,10 +81,7 @@ class ChatService:
         self,
         retrieval_service: RetrievalService | None = None,
     ):
-        self.retrieval_service = (
-            retrieval_service
-            or RetrievalService()
-        )
+        self.retrieval_service = retrieval_service or RetrievalService()
 
     def generate_response(
         self,
@@ -127,14 +141,12 @@ class ChatService:
 
             if request.document_id is not None:
 
-                retrieval_results = (
-                    self.retrieval_service.retrieve(
-                        db=db,
-                        question=request.message,
-                        user_id=user_id,
-                        document_id=request.document_id,
-                        top_k=5,
-                    )
+                retrieval_results = self.retrieval_service.retrieve(
+                    db=db,
+                    question=request.message,
+                    user_id=user_id,
+                    document_id=request.document_id,
+                    top_k=5,
                 )
 
                 chunks = [
@@ -192,8 +204,12 @@ class ChatService:
         request: ChatRequest,
         user_id: int,
     ):
-
         try:
+
+            # -------------------------------------------------
+            # Get or create chat
+            # -------------------------------------------------
+
             if request.chat_id is None:
 
                 chat = create_chat(
@@ -211,11 +227,14 @@ class ChatService:
                 )
 
                 if chat is None:
-
                     raise HTTPException(
                         status_code=404,
                         detail="Chat not found",
                     )
+
+            # -------------------------------------------------
+            # Save user message
+            # -------------------------------------------------
 
             user_message = create_message(
                 db=db,
@@ -223,6 +242,10 @@ class ChatService:
                 role="user",
                 content=request.message,
             )
+
+            # -------------------------------------------------
+            # Load conversation history
+            # -------------------------------------------------
 
             history = get_chat_messages(
                 db=db,
@@ -233,7 +256,9 @@ class ChatService:
             conversation = []
 
             for message in history:
+
                 content = message.content
+
                 if message.id == user_message.id and request.action == "explain":
                     content = build_explain_prompt(
                         message.content,
@@ -246,55 +271,135 @@ class ChatService:
                     }
                 )
 
-            rag_sources = []
+            # -------------------------------------------------
+            # RAG setup
+            # -------------------------------------------------
 
-            # -------------------------------------------------
-            # RAG
-            # -------------------------------------------------
+            rag_sources = []
 
             if request.document_id is not None:
 
-                retrieval_results = (
-                    self.retrieval_service.retrieve(
+                try:
+
+                    # -----------------------------------------
+                    # Validate document
+                    # -----------------------------------------
+
+                    validate_document_for_rag(
+                        db=db,
+                        document_id=request.document_id,
+                        user_id=user_id,
+                    )
+
+                    # -----------------------------------------
+                    # Retrieve relevant chunks
+                    # -----------------------------------------
+
+                    retrieval_results = self.retrieval_service.retrieve(
                         db=db,
                         question=request.message,
                         user_id=user_id,
                         document_id=request.document_id,
                         top_k=5,
+                        min_similarity=0.35,
                     )
-                )
 
-                chunks = [
-                    RetrievedChunk(
-                        document_id=result.document_id,
-                        page_number=result.page_number,
-                        content=result.content,
+                    # -----------------------------------------
+                    # Validate retrieval results
+                    # -----------------------------------------
+
+                    validate_retrieval_results(
+                        retrieval_results,
                     )
-                    for result in retrieval_results
-                ]
 
-                context = build_rag_context(
-                    chunks,
-                )
+                    # -----------------------------------------
+                    # Build RAG chunks
+                    # -----------------------------------------
 
-                rag_prompt = build_rag_prompt(
-                    context=context,
-                    question=request.message,
-                )
+                    chunks = [
+                        RetrievedChunk(
+                            document_id=result.document_id,
+                            page_number=result.page_number,
+                            content=result.content,
+                        )
+                        for result in retrieval_results
+                    ]
 
-                conversation = [
-                    {
-                        "role": "user",
-                        "content": rag_prompt,
-                    }
-                ]
+                    # -----------------------------------------
+                    # Build context
+                    # -----------------------------------------
 
-                rag_sources = build_rag_sources(
-                    db=db,
-                    results=retrieval_results,
-                    user_id=user_id,
-                )
+                    context = build_rag_context(
+                        chunks,
+                    )
 
+                    if not context.strip():
+
+                        raise EmptyDocumentError("Retrieved context is empty.")
+
+                    # -----------------------------------------
+                    # Build RAG prompt
+                    # -----------------------------------------
+
+                    rag_prompt = build_rag_prompt(
+                        context=context,
+                        question=request.message,
+                    )
+
+                    # -----------------------------------------
+                    # Replace normal conversation with
+                    # document-grounded RAG prompt
+                    # -----------------------------------------
+
+                    conversation = [
+                        {
+                            "role": "user",
+                            "content": rag_prompt,
+                        }
+                    ]
+
+                    # -----------------------------------------
+                    # Build citations
+                    # -----------------------------------------
+
+                    rag_sources = build_rag_sources(
+                        db=db,
+                        results=retrieval_results,
+                        user_id=user_id,
+                    )
+
+                except (
+                    DocumentNotFoundError,
+                    UnsupportedDocumentError,
+                    EmptyDocumentError,
+                    NoRelevantContextError,
+                    InsufficientContextError,
+                ) as error:
+
+                    failure_message = get_rag_failure_message(
+                        error,
+                    )
+
+                    # Send controlled RAG error to frontend.
+                    yield (
+                        "event: rag_error\n" f"data: {json.dumps(failure_message)}\n\n"
+                    )
+
+                    # Persist the failure response.
+                    create_message(
+                        db=db,
+                        chat_id=chat.id,
+                        role="assistant",
+                        content=failure_message,
+                    )
+
+                    db.commit()
+
+                    return
+
+            # -------------------------------------------------
+            # Full streamed response
+            # -------------------------------------------------
 
             full_response = ""
 
@@ -302,48 +407,37 @@ class ChatService:
             # SSE: chat ID
             # -------------------------------------------------
 
-            # Send chat_id as the first SSE event so the client can track the conversation
-            yield f"event: chat_id\ndata: {chat.id}\n\n"
+            yield ("event: chat_id\n" f"data: {chat.id}\n\n")
 
             # -------------------------------------------------
-            # SSE: RAG sources
+            # Stream AI response
             # -------------------------------------------------
 
-            if rag_sources:
-
-                source_payload = [
-                    {
-                        "document_id": source.document_id,
-                        "document_name": source.document_name,
-                        "page_number": source.page_number,
-                    }
-                    for source in rag_sources
-                ]
-
-                yield "event: sources\n"
-                yield (
-                    f"data: {json.dumps(source_payload)}\n\n"
-                )
-
-            # -------------------------------------------------
-            # SSE: AI tokens
-            # -------------------------------------------------
-
-
-            for token in provider.stream_response(conversation):
+            for token in provider.stream_response(
+                conversation,
+            ):
 
                 full_response += token
-                # Normalize line endings for SSE
-                token = token.replace("\r\n", "\n").replace("\r", "\n")
 
-                # SSE requires each line of data to have its own "data:" prefix
+                # Normalize line endings for SSE.
+                token = token.replace(
+                    "\r\n",
+                    "\n",
+                ).replace(
+                    "\r",
+                    "\n",
+                )
+
+                # SSE requires every line to have
+                # its own data: prefix.
                 for line in token.split("\n"):
                     yield f"data: {line}\n"
 
+                # Blank line terminates this SSE event.
                 yield "\n"
 
             # -------------------------------------------------
-            # Add citations to persisted answer
+            # Add citations
             # -------------------------------------------------
 
             final_response = full_response
@@ -354,19 +448,17 @@ class ChatService:
                     rag_sources,
                 )
 
-                yield (
-                    "event: sources\n"
-                    f"data: {json.dumps(formatted_sources)}\n\n"
-                )
+                # Send citations to frontend.
+                yield ("event: sources\n" f"data: {json.dumps(formatted_sources)}\n\n")
 
+                # Persist citations together with answer.
                 final_response = (
-                    f"{full_response.rstrip()}"
-                    f"\n\n"
-                    f"{formatted_sources}"
+                    f"{full_response.rstrip()}" f"\n\n" f"{formatted_sources}"
                 )
 
-            else:
-                final_response = full_response
+            # -------------------------------------------------
+            # Save assistant response
+            # -------------------------------------------------
 
             create_message(
                 db=db,
@@ -378,6 +470,7 @@ class ChatService:
             db.commit()
 
         except Exception:
+
             db.rollback()
             raise
 

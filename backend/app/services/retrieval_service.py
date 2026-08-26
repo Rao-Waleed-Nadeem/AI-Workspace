@@ -25,10 +25,7 @@ class RetrievalService:
         self,
         embedding_service: EmbeddingService | None = None,
     ):
-        self.embedding_service = (
-            embedding_service
-            or EmbeddingService()
-        )
+        self.embedding_service = embedding_service or EmbeddingService()
 
     def retrieve(
         self,
@@ -38,24 +35,22 @@ class RetrievalService:
         user_id: int,
         document_id: int | None = None,
         top_k: int = 5,
+        min_similarity: float = 0.35,
     ) -> list[RetrievalResult]:
 
         question = question.strip()
 
         if not question:
-            raise ValueError(
-                "Retrieval question cannot be empty."
-            )
+            raise ValueError("Retrieval question cannot be empty.")
 
         if top_k <= 0:
-            raise ValueError(
-                "top_k must be greater than zero."
-            )
+            raise ValueError("top_k must be greater than zero.")
 
-        query_embedding = (
-            self.embedding_service.embed_text(
-                question,
-            )
+        if not 0.0 <= min_similarity <= 1.0:
+            raise ValueError("min_similarity must be between 0 and 1.")
+
+        query_embedding = self.embedding_service.embed_text(
+            question,
         )
 
         results = search_similar_chunks(
@@ -66,7 +61,7 @@ class RetrievalService:
             limit=top_k,
         )
 
-        return [
+        retrieval_results = [
             RetrievalResult(
                 chunk_id=chunk.id,
                 document_id=chunk.document_id,
@@ -77,4 +72,10 @@ class RetrievalService:
                 similarity=float(similarity),
             )
             for chunk, similarity in results
+        ]
+
+        return [
+            result
+            for result in retrieval_results
+            if result.similarity >= min_similarity
         ]
