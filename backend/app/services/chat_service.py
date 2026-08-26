@@ -15,6 +15,7 @@ from app.services.rag_context_service import (
 )
 from app.services.retrieval_service import RetrievalService
 
+
 from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
@@ -52,6 +53,7 @@ from app.repositories.message_repository import create_message, get_chat_message
 from app.repositories.attachment_repository import create_attachment
 from app.routes import chat
 from app.utils.file_storage import save_uploaded_file
+from app.services.rag_citation_service import build_rag_sources, format_rag_sources
 
 provider = GroqProvider()
 
@@ -244,10 +246,89 @@ class ChatService:
                     }
                 )
 
+            rag_sources = []
+
+            # -------------------------------------------------
+            # RAG
+            # -------------------------------------------------
+
+            if request.document_id is not None:
+
+                retrieval_results = (
+                    self.retrieval_service.retrieve(
+                        db=db,
+                        question=request.message,
+                        user_id=user_id,
+                        document_id=request.document_id,
+                        top_k=5,
+                    )
+                )
+
+                chunks = [
+                    RetrievedChunk(
+                        document_id=result.document_id,
+                        page_number=result.page_number,
+                        content=result.content,
+                    )
+                    for result in retrieval_results
+                ]
+
+                context = build_rag_context(
+                    chunks,
+                )
+
+                rag_prompt = build_rag_prompt(
+                    context=context,
+                    question=request.message,
+                )
+
+                conversation = [
+                    {
+                        "role": "user",
+                        "content": rag_prompt,
+                    }
+                ]
+
+                rag_sources = build_rag_sources(
+                    db=db,
+                    results=retrieval_results,
+                    user_id=user_id,
+                )
+
+
             full_response = ""
+
+            # -------------------------------------------------
+            # SSE: chat ID
+            # -------------------------------------------------
 
             # Send chat_id as the first SSE event so the client can track the conversation
             yield f"event: chat_id\ndata: {chat.id}\n\n"
+
+            # -------------------------------------------------
+            # SSE: RAG sources
+            # -------------------------------------------------
+
+            if rag_sources:
+
+                source_payload = [
+                    {
+                        "document_id": source.document_id,
+                        "document_name": source.document_name,
+                        "page_number": source.page_number,
+                    }
+                    for source in rag_sources
+                ]
+
+                yield "event: sources\n"
+                yield (
+                    f"data: {json.dumps(source_payload)}\n\n"
+                )
+
+            # -------------------------------------------------
+            # SSE: AI tokens
+            # -------------------------------------------------
+
 
             for token in provider.stream_response(conversation):
 
@@ -261,11 +342,37 @@ class ChatService:
 
                 yield "\n"
 
+            # -------------------------------------------------
+            # Add citations to persisted answer
+            # -------------------------------------------------
+
+            final_response = full_response
+
+            if rag_sources:
+
+                formatted_sources = format_rag_sources(
+                    rag_sources,
+                )
+
+                yield (
+                    "event: sources\n"
+                    f"data: {json.dumps(formatted_sources)}\n\n"
+                )
+
+                final_response = (
+                    f"{full_response.rstrip()}"
+                    f"\n\n"
+                    f"{formatted_sources}"
+                )
+
+            else:
+                final_response = full_response
+
             create_message(
                 db=db,
                 chat_id=chat.id,
                 role="assistant",
-                content=full_response,
+                content=final_response,
             )
 
             db.commit()

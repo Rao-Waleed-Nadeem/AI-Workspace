@@ -185,7 +185,7 @@ export default function Home() {
 
         return;
       } else {
-        const { text, chatId: returnedChatId } = await sendMessage(
+        const { text, chatId: returnedChatId,  } = await sendMessage(
           message,
           chatId,
           (streamedText) => {
@@ -214,6 +214,7 @@ export default function Home() {
               ? {
                   ...msg,
                   content: text,
+                  // sources: receivedSources,
                 }
               : msg,
           ),

@@ -9,6 +9,14 @@ export async function sendMessage(
   chatId: number | null,
   onChunk: (chunk: string) => void,
   action: string | null = null,
+  documentId: number | null = null,
+  onSources?: (
+    sources: {
+      document_id: number;
+      document_name: string;
+      page_number: number | null;
+    }[],
+  ) => void,
 ): Promise<{ text: string; chatId: number | null }> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: "POST",
@@ -17,6 +25,7 @@ export async function sendMessage(
       chat_id: chatId,
       message,
       action,
+      document_id: documentId,
     }),
   });
 
@@ -33,6 +42,12 @@ export async function sendMessage(
 
   let fullResponse = "";
   let resolvedChatId: number | null = null;
+
+  let resolvedSources: {
+    document_id: number;
+    document_name: string;
+    page_number: number | null;
+  }[] = [];
 
   let buffer = "";
 
@@ -55,8 +70,19 @@ export async function sendMessage(
       if (!Number.isNaN(parsedChatId)) {
         resolvedChatId = parsedChatId;
       }
+    } else if (currentEventType === "sources") {
+      try {
+        const formattedSources = JSON.parse(data);
+
+        fullResponse += `\n\n${formattedSources}`;
+
+        onChunk(fullResponse);
+      } catch (error) {
+        console.error("Failed to parse RAG sources:", error);
+      }
     } else {
       fullResponse += data;
+
       onChunk(fullResponse);
     }
 
