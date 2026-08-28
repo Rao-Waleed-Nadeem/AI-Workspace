@@ -37,15 +37,16 @@ export async function login(
   email: string,
   password: string,
 ): Promise<LoginResponse> {
+  const formData = new URLSearchParams();
+
+  formData.append("username", email);
+  formData.append("password", password);
   const response = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
+    body: formData.toString(),
   });
 
   const data = await response.json();

@@ -56,6 +56,8 @@ class AuthService:
         request: LoginRequest,
     ) -> TokenResponse:
 
+        print("email:", request.email, "password:", request.password)
+
         user = get_user_by_email(
             db=db,
             email=request.email,

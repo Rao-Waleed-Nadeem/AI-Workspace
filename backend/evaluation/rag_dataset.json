@@ -1,0 +1,32 @@
+[
+  {
+    "id": "rag-001",
+    "question": "What is the main purpose of the trading system?",
+    "document_id": 12,
+    "expected_pages": [1],
+    "expected_facts": [
+      "The system integrates diverse data sources.",
+      "The system uses advanced feature engineering.",
+      "The system includes risk controls."
+    ],
+    "should_answer": true
+  },
+  {
+    "id": "rag-002",
+    "question": "What risk controls are mentioned?",
+    "document_id": 12,
+    "expected_pages": [1, 7],
+    "expected_facts": [
+      "The system includes strong risk controls."
+    ],
+    "should_answer": true
+  },
+  {
+    "id": "rag-003",
+    "question": "What is the exact office address of the company?",
+    "document_id": 12,
+    "expected_pages": [],
+    "expected_facts": [],
+    "should_answer": false
+  }
+]

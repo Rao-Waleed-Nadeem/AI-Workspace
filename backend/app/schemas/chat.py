@@ -11,10 +11,6 @@ class ChatRequest(BaseModel):
     message: str
     document_id: int | None = None
 
-
-
-
-
 class ChatResponse(BaseModel):
     chat_id: int
     message: str

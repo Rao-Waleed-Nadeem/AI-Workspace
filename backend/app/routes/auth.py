@@ -44,10 +44,12 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    
     request = LoginRequest(
         email=form_data.username,
         password=form_data.password,
     )
+    print("email:", request.email, "password:", request.password)
     return auth_service.login(
         db=db,
         request=request,

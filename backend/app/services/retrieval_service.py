@@ -35,7 +35,7 @@ class RetrievalService:
         user_id: int,
         document_id: int | None = None,
         top_k: int = 5,
-        min_similarity: float = 0.35,
+        min_similarity: float = 0.0,  #have to changed 0.35
     ) -> list[RetrievalResult]:
 
         question = question.strip()

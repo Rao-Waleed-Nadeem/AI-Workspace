@@ -64,7 +64,7 @@ from app.repositories.attachment_repository import create_attachment
 from app.routes import chat
 from app.utils.file_storage import save_uploaded_file
 from app.services.rag_citation_service import build_rag_sources, format_rag_sources
-from backend.app.services.rag_exceptions import (
+from app.services.rag_exceptions import (
     DocumentNotFoundError,
     EmptyDocumentError,
     InsufficientContextError,
