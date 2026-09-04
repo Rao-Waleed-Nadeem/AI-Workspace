@@ -5,9 +5,9 @@
     "document_id": 12,
     "expected_pages": [1],
     "expected_facts": [
-      "The system integrates diverse data sources.",
-      "The system uses advanced feature engineering.",
-      "The system includes risk controls."
+      "diverse data sources",
+      "advanced feature engineering",
+      "risk controls"
     ],
     "should_answer": true
   },
@@ -17,7 +17,7 @@
     "document_id": 12,
     "expected_pages": [1, 7],
     "expected_facts": [
-      "The system includes strong risk controls."
+      "strong risk controls"
     ],
     "should_answer": true
   },
@@ -28,5 +28,17 @@
     "expected_pages": [],
     "expected_facts": [],
     "should_answer": false
+  },
+  {
+    "id": "rag-004",
+    "question": "What alternative data sources are discussed?",
+    "document_id": 12,
+    "expected_pages": [2],
+    "expected_facts": [
+      "alternative data",
+      "consumer confidence",
+      "PMI"
+    ],
+    "should_answer": true
   }
 ]

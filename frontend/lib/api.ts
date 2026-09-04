@@ -17,7 +17,15 @@ export async function sendMessage(
       page_number: number | null;
     }[],
   ) => void,
-): Promise<{ text: string; chatId: number | null }> {
+): Promise<{
+  text: string;
+  chatId: number | null;
+  sources: {
+    document_id: number;
+    document_name: string;
+    page_number: number | null;
+  }[];
+}> {
   const response = await fetch(`${API_URL}/chat/stream`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -42,6 +50,11 @@ export async function sendMessage(
 
   let fullResponse = "";
   let resolvedChatId: number | null = null;
+  let receivedSources: {
+    document_id: number;
+    document_name: string;
+    page_number: number | null;
+  }[] = [];
 
   let buffer = "";
 
@@ -64,16 +77,9 @@ export async function sendMessage(
       }
     } else if (currentEventType === "sources") {
       try {
-        const formattedSources = JSON.parse(data);
-
-        fullResponse += `\n\n${formattedSources}`;
-
-        onChunk(fullResponse);
+        receivedSources = JSON.parse(data);
       } catch (error) {
-        console.error(
-          "Failed to parse RAG sources:",
-          error,
-        );
+        console.error("Failed to parse RAG sources:", error);
       }
     } else if (currentEventType === "rag_error") {
       try {
@@ -83,10 +89,7 @@ export async function sendMessage(
 
         onChunk(fullResponse);
       } catch (error) {
-        console.error(
-          "Failed to parse RAG error:",
-          error,
-        );
+        console.error("Failed to parse RAG error:", error);
 
         fullResponse = data;
 
@@ -118,10 +121,7 @@ export async function sendMessage(
     buffer = lines.pop() ?? "";
 
     for (const line of lines) {
-      const normalizedLine = line.replace(
-        /\r$/,
-        "",
-      );
+      const normalizedLine = line.replace(/\r$/, "");
 
       // Blank line = end of SSE event
       if (normalizedLine === "") {
@@ -130,22 +130,16 @@ export async function sendMessage(
       }
 
       if (normalizedLine.startsWith("event:")) {
-        currentEventType = normalizedLine
-          .slice("event:".length)
-          .trim();
+        currentEventType = normalizedLine.slice("event:".length).trim();
 
         continue;
       }
 
       if (normalizedLine.startsWith("data:")) {
-        const raw = normalizedLine.slice(
-          "data:".length,
-        );
+        const raw = normalizedLine.slice("data:".length);
 
         // Remove exactly one optional space.
-        const payload = raw.startsWith(" ")
-          ? raw.slice(1)
-          : raw;
+        const payload = raw.startsWith(" ") ? raw.slice(1) : raw;
 
         currentEventData.push(payload);
       }
@@ -159,7 +153,69 @@ export async function sendMessage(
   return {
     text: fullResponse,
     chatId: resolvedChatId,
+    sources: receivedSources,
   };
+}
+
+export interface Document {
+  id: number;
+  original_name: string;
+  mime_type: string;
+  size: number;
+  page_count: number;
+  created_at: string;
+}
+
+export async function getDocuments(): Promise<Document[]> {
+  const response = await fetch(`${API_URL}/files`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load documents");
+  }
+
+  const data = await response.json();
+
+  return data.documents;
+}
+
+export async function uploadDocument(
+  file: File,
+): Promise<Document> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const authHeaders = getAuthHeaders();
+
+  delete authHeaders["Content-Type"];
+
+  const response = await fetch(
+    `${API_URL}/files/upload`,
+    {
+      method: "POST",
+      headers: authHeaders,
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    console.error(
+      "Document upload error:",
+      errorText,
+    );
+
+    throw new Error(
+      "Failed to upload document",
+    );
+  }
+
+  const data = await response.json();
+
+  return data.document;
 }
 
 export async function getChatMessages(chatId: number) {

@@ -23,4 +23,7 @@ docker/postgres/
 
 # Backend runtime uploads
 /backend/uploads/
+/backend/evaluation
+/backend/test_real_rag.py
+/backend/test_retrieval.py
 

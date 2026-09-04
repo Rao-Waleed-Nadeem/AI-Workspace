@@ -1,11 +1,10 @@
-from dbm import error
-from email.mime import image
 import json
 
 from app.tools.definitions import CALCULATOR_TOOL
 from app.tools.registry import TOOLS
 
-from httpcore import request
+from app.core.config import settings
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -61,9 +60,12 @@ from app.repositories.chat_repository import create_chat, get_chat
 
 from app.repositories.message_repository import create_message, get_chat_messages
 from app.repositories.attachment_repository import create_attachment
-from app.routes import chat
 from app.utils.file_storage import save_uploaded_file
-from app.services.rag_citation_service import build_rag_sources, format_rag_sources
+from app.services.rag_citation_service import (
+    build_rag_sources,
+    format_rag_sources,
+    serialize_rag_sources,
+)
 from app.services.rag_exceptions import (
     DocumentNotFoundError,
     EmptyDocumentError,
@@ -139,14 +141,27 @@ class ChatService:
                     }
                 )
 
+            rag_sources = []
+
             if request.document_id is not None:
+
+                validate_document_for_rag(
+                    db=db,
+                    document_id=request.document_id,
+                    user_id=user_id,
+                )
 
                 retrieval_results = self.retrieval_service.retrieve(
                     db=db,
                     question=request.message,
                     user_id=user_id,
                     document_id=request.document_id,
-                    top_k=5,
+                    top_k=settings.RAG_TOP_K,
+                    min_similarity=settings.RAG_MIN_SIMILARITY,
+                )
+
+                validate_retrieval_results(
+                    retrieval_results,
                 )
 
                 chunks = [
@@ -162,6 +177,9 @@ class ChatService:
                     chunks,
                 )
 
+                if not context.strip():
+                    raise EmptyDocumentError("Retrieved context is empty.")
+
                 rag_prompt = build_rag_prompt(
                     context=context,
                     question=request.message,
@@ -174,9 +192,22 @@ class ChatService:
                     }
                 ]
 
+                rag_sources = build_rag_sources(
+                    db=db,
+                    results=retrieval_results,
+                    user_id=user_id,
+                )
+
             reply = provider.generate_response(
                 conversation,
             )
+
+            if rag_sources:
+                formatted_sources = format_rag_sources(
+                    rag_sources,
+                )
+
+                reply = f"{reply.rstrip()}" f"\n\n" f"{formatted_sources}"
 
             create_message(
                 db=db,
@@ -231,6 +262,8 @@ class ChatService:
                         status_code=404,
                         detail="Chat not found",
                     )
+
+            yield ("event: chat_id\n" f"data: {chat.id}\n\n")
 
             # -------------------------------------------------
             # Save user message
@@ -300,8 +333,8 @@ class ChatService:
                         question=request.message,
                         user_id=user_id,
                         document_id=request.document_id,
-                        top_k=5,
-                        min_similarity=0.35,
+                        top_k=settings.RAG_TOP_K,
+                        min_similarity=settings.RAG_MIN_SIMILARITY,
                     )
 
                     # -----------------------------------------
@@ -407,7 +440,7 @@ class ChatService:
             # SSE: chat ID
             # -------------------------------------------------
 
-            yield ("event: chat_id\n" f"data: {chat.id}\n\n")
+            # yield ("event: chat_id\n" f"data: {chat.id}\n\n")
 
             # -------------------------------------------------
             # Stream AI response
@@ -448,8 +481,20 @@ class ChatService:
                     rag_sources,
                 )
 
+                serialized_sources = [
+                    {
+                        "document_id": source.document_id,
+                        "document_name": source.document_name,
+                        "page_number": source.page_number,
+                    }
+                    for source in rag_sources
+                ]
+
                 # Send citations to frontend.
-                yield ("event: sources\n" f"data: {json.dumps(formatted_sources)}\n\n")
+                yield (
+                    "event: sources\n"
+                    f"data: {json.dumps(serialize_rag_sources(serialized_sources))}\n\n"
+                )
 
                 # Persist citations together with answer.
                 final_response = (

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+
 from app.repositories.document_chunk_repository import (
     search_similar_chunks,
 )
@@ -34,9 +36,15 @@ class RetrievalService:
         question: str,
         user_id: int,
         document_id: int | None = None,
-        top_k: int = 5,
-        min_similarity: float = 0.0,  #have to changed 0.35
+        top_k: int | None = None,
+        min_similarity: float | None = None,  #have to changed 0.35
     ) -> list[RetrievalResult]:
+
+        if top_k is None:
+            top_k = settings.RAG_TOP_K
+
+        if min_similarity is None:
+            min_similarity = settings.RAG_MIN_SIMILARITY
 
         question = question.strip()
 

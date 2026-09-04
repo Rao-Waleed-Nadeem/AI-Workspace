@@ -49,6 +49,26 @@ class Settings:
                 "384",
             )
         )
+        self.RAG_TOP_K = int(
+            os.getenv(
+                "RAG_TOP_K",
+                "5",
+            )
+        )
+
+        self.RAG_MIN_SIMILARITY = float(
+            os.getenv(
+                "RAG_MIN_SIMILARITY",
+                "0.20",
+            )
+        )
+
+        self.RAG_MAX_CONTEXT_CHUNKS = int(
+            os.getenv(
+                "RAG_MAX_CONTEXT_CHUNKS",
+                "5",
+            )
+        )
 
 
 settings = Settings()

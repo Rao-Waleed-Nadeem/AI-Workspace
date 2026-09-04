@@ -96,3 +96,16 @@ def format_rag_sources(
             )
 
     return "\n".join(lines)
+
+def serialize_rag_sources(
+    sources: list[RAGSource],
+) -> list[dict]:
+    return [
+        {
+            "document_id": source.document_id,
+            "document_name": source.document_name,
+            "page_number": source.page_number,
+        }
+        for source in sources
+    ]
+

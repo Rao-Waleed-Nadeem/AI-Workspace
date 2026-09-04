@@ -1,5 +1,6 @@
 from app.database import SessionLocal
 from app.services.retrieval_service import RetrievalService
+from app.core.config import settings
 
 
 DOCUMENT_ID = 12
@@ -33,8 +34,8 @@ def main():
                 question=question,
                 user_id=USER_ID,
                 document_id=DOCUMENT_ID,
-                top_k=5,
-                min_similarity=0.0,
+                top_k=settings.RAG_TOP_K,
+                min_similarity=settings.RAG_MIN_SIMILARITY,
             )
 
             if not results:

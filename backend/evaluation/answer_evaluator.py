@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 
@@ -7,6 +8,64 @@ class AnswerEvaluation:
     grounded: bool
     hallucinated: bool
     missing_information: bool
+    matched_facts: int
+    expected_facts: int
+
+
+REFUSAL_PHRASES = (
+    "i don't know",
+    "not available",
+    "not provided",
+    "not contain",
+    "does not contain",
+    "cannot determine",
+    "can't determine",
+    "cannot answer",
+    "can't answer",
+    "insufficient information",
+    "not enough information",
+)
+
+
+def normalize_text(text: str) -> str:
+    return re.sub(
+        r"\s+",
+        " ",
+        text.lower(),
+    ).strip()
+
+
+def fact_is_supported(
+    answer: str,
+    fact: str,
+) -> bool:
+
+    normalized_answer = normalize_text(answer)
+    normalized_fact = normalize_text(fact)
+
+    if not normalized_fact:
+        return False
+
+    fact_terms = [
+        term
+        for term in normalized_fact.split()
+        if len(term) > 4
+    ]
+
+    if not fact_terms:
+        return False
+
+    matched_terms = sum(
+        term in normalized_answer
+        for term in fact_terms
+    )
+
+    required_matches = max(
+        1,
+        (len(fact_terms) + 1) // 2,
+    )
+
+    return matched_terms >= required_matches
 
 
 def evaluate_answer(
@@ -17,41 +76,37 @@ def evaluate_answer(
     should_answer: bool,
 ) -> AnswerEvaluation:
 
-    normalized_answer = answer.lower()
+    normalized_answer = normalize_text(answer)
 
     if not should_answer:
 
-        hallucinated = (
-            "i don't know" not in normalized_answer
-            and "not available" not in normalized_answer
-            and "not contain" not in normalized_answer
-            and "cannot" not in normalized_answer
+        refused = any(
+            phrase in normalized_answer
+            for phrase in REFUSAL_PHRASES
         )
 
         return AnswerEvaluation(
             case_id=case_id,
-            grounded=not hallucinated,
-            hallucinated=hallucinated,
+            grounded=refused,
+            hallucinated=not refused,
             missing_information=False,
+            matched_facts=0,
+            expected_facts=0,
         )
 
-    matched_facts = 0
+    matched_facts = sum(
+        fact_is_supported(
+            answer,
+            fact,
+        )
+        for fact in expected_facts
+    )
 
-    for fact in expected_facts:
-
-        key_terms = [
-            word.lower()
-            for word in fact.split()
-            if len(word) > 4
-        ]
-
-        if key_terms and any(
-            term in normalized_answer
-            for term in key_terms
-        ):
-            matched_facts += 1
-
-    grounded = matched_facts > 0
+    grounded = (
+        matched_facts == len(expected_facts)
+        if expected_facts
+        else False
+    )
 
     missing_information = (
         matched_facts < len(expected_facts)
@@ -62,6 +117,8 @@ def evaluate_answer(
         grounded=grounded,
         hallucinated=False,
         missing_information=missing_information,
+        matched_facts=matched_facts,
+        expected_facts=len(expected_facts),
     )
 
 

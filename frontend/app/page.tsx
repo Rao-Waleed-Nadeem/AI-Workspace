@@ -9,6 +9,9 @@ import {
   analyzeMessage,
   sendToolMessage,
   sendVisionMessage,
+  getDocuments,
+  uploadDocument,
+  Document,
 } from "@/lib/api";
 import { Message } from "@/types/chat";
 import { useAuth } from "@/lib/useAuth";
@@ -21,6 +24,10 @@ export default function Home() {
   const [chatId, setChatId] = useState<number | null>(null);
   const [action, setAction] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
+    null,
+  );
 
   const router = useRouter();
 
@@ -97,8 +104,42 @@ export default function Home() {
     }
   }, [authLoading, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    getDocuments()
+      .then((documents) => {
+        setDocuments(documents);
+      })
+      .catch((error) => {
+        console.error("Failed to load documents:", error);
+      });
+  }, [isAuthenticated]);
+
+  const handleUploadDocument = async (file: File) => {
+    if (isLoading) {
+      return;
+    }
+
+    try {
+      const document = await uploadDocument(file);
+
+      setDocuments((prev) => [document, ...prev]);
+
+      setSelectedDocumentId(document.id);
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+
+      alert("Failed to upload document.");
+    }
+  };
+
   const handleSend = async () => {
-    if ((!input.trim() && !selectedFile) || isLoading) return;
+    if ((!input.trim() && !selectedFile) || isLoading) {
+      return;
+    }
 
     setIsLoading(true);
 
@@ -185,7 +226,11 @@ export default function Home() {
 
         return;
       } else {
-        const { text, chatId: returnedChatId,  } = await sendMessage(
+        const {
+          text,
+          chatId: returnedChatId,
+          sources,
+        } = await sendMessage(
           message,
           chatId,
           (streamedText) => {
@@ -214,11 +259,12 @@ export default function Home() {
               ? {
                   ...msg,
                   content: text,
-                  // sources: receivedSources,
+                  sources,
                 }
               : msg,
           ),
         );
+        setSelectedDocumentId(null);
       }
     } catch (error) {
       console.error(error);
@@ -415,6 +461,10 @@ export default function Home() {
               setInput={setInput}
               selectedFile={selectedFile}
               setSelectedFile={setSelectedFile}
+              selectedDocumentId={selectedDocumentId}
+              setSelectedDocumentId={setSelectedDocumentId}
+              documents={documents}
+              onUploadDocument={handleUploadDocument}
               onSend={handleSend}
               isLoading={isLoading}
             />

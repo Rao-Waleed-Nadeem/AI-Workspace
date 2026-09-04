@@ -7,6 +7,7 @@ class RetrievedChunk:
     page_number: int | None
     content: str
 
+
 def build_rag_context(
     chunks: list[RetrievedChunk],
 ) -> str:
@@ -14,9 +15,14 @@ def build_rag_context(
     if not chunks:
         return ""
 
-    sections = []
+    sections: list[str] = []
 
-    for chunk in chunks:
+    for index, chunk in enumerate(chunks, start=1):
+
+        content = chunk.content.strip()
+
+        if not content:
+            continue
 
         source = f"Document ID: {chunk.document_id}"
 
@@ -24,8 +30,10 @@ def build_rag_context(
             source += f" | Page {chunk.page_number}"
 
         sections.append(
-            f"[Source: {source}]\n"
-            f"{chunk.content}"
+            f"[Retrieved Source {index}]\n"
+            f"{source}\n"
+            f"{content}"
         )
 
     return "\n\n---\n\n".join(sections)
+

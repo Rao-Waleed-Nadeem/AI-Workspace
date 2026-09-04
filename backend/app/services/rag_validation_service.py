@@ -70,7 +70,7 @@ def validate_retrieval_results(
     usable_results = [
         result
         for result in results
-        if result.content.strip()
+        if result.content and result.content.strip()
     ]
 
     if not usable_results:
