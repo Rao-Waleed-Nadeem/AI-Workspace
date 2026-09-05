@@ -52,7 +52,7 @@ class Settings:
         self.RAG_TOP_K = int(
             os.getenv(
                 "RAG_TOP_K",
-                "5",
+                "3",
             )
         )
 
@@ -67,6 +67,20 @@ class Settings:
             os.getenv(
                 "RAG_MAX_CONTEXT_CHUNKS",
                 "5",
+            )
+        )
+
+        self.CHAT_HISTORY_MESSAGE_LIMIT = int(
+            os.getenv(
+                "CHAT_HISTORY_MESSAGE_LIMIT",
+                "8",
+            )
+        )
+
+        self.CHAT_HISTORY_MAX_CHARACTERS = int(
+            os.getenv(
+                "CHAT_HISTORY_MAX_CHARACTERS",
+                "12000",
             )
         )
 

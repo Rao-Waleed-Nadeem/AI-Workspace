@@ -246,6 +246,7 @@ export default function Home() {
             );
           },
           action,
+          selectedDocumentId,
         );
 
         if (returnedChatId !== null) {
@@ -379,7 +380,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen text-black bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <header className="flex items-center justify-between mb-8">

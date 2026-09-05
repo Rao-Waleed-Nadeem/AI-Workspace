@@ -1,5 +1,7 @@
 import json
 
+from groq import APIStatusError
+
 from app.tools.definitions import CALCULATOR_TOOL
 from app.tools.registry import TOOLS
 
@@ -77,6 +79,57 @@ from app.services.rag_exceptions import (
 provider = GroqProvider()
 
 
+def build_limited_conversation(
+    history,
+    *,
+    transform_message=None,
+) -> list[dict]:
+
+    recent_history = history[-settings.CHAT_HISTORY_MESSAGE_LIMIT :]
+
+    conversation = []
+    total_characters = 0
+
+    for message in reversed(recent_history):
+
+        content = message.content
+
+        if transform_message is not None:
+            content = transform_message(message, content)
+
+        remaining_characters = (
+            settings.CHAT_HISTORY_MAX_CHARACTERS
+            - total_characters
+        )
+
+        if remaining_characters <= 0:
+            break
+
+        if len(content) > remaining_characters:
+            content = content[-remaining_characters:]
+
+        conversation.append(
+            {
+                "role": message.role,
+                "content": content,
+            }
+        )
+
+        total_characters += len(content)
+
+    return list(reversed(conversation))
+
+
+def get_model_limit_message() -> str:
+
+    return (
+        "This chat has grown too large for the current model limit. "
+        "I kept your saved chat history visible, but only the most recent "
+        "messages can be sent to the model. Please try again with a shorter "
+        "message or start a new chat."
+    )
+
+
 class ChatService:
 
     def __init__(
@@ -131,15 +184,9 @@ class ChatService:
                 user_id=user_id,
             )
 
-            conversation = []
-
-            for message in history:
-                conversation.append(
-                    {
-                        "role": message.role,
-                        "content": message.content,
-                    }
-                )
+            conversation = build_limited_conversation(
+                history,
+            )
 
             rag_sources = []
 
@@ -286,23 +333,19 @@ class ChatService:
                 user_id=user_id,
             )
 
-            conversation = []
-
-            for message in history:
-
-                content = message.content
+            def transform_stream_message(message, content):
 
                 if message.id == user_message.id and request.action == "explain":
-                    content = build_explain_prompt(
-                        message.content,
+                    return build_explain_prompt(
+                        content,
                     )
 
-                conversation.append(
-                    {
-                        "role": message.role,
-                        "content": content,
-                    }
-                )
+                return content
+
+            conversation = build_limited_conversation(
+                history,
+                transform_message=transform_stream_message,
+            )
 
             # -------------------------------------------------
             # RAG setup
@@ -446,28 +489,55 @@ class ChatService:
             # Stream AI response
             # -------------------------------------------------
 
-            for token in provider.stream_response(
-                conversation,
-            ):
-
-                full_response += token
-
-                # Normalize line endings for SSE.
-                token = token.replace(
-                    "\r\n",
-                    "\n",
-                ).replace(
-                    "\r",
-                    "\n",
+            try:
+                response_stream = provider.stream_response(
+                    conversation,
                 )
 
-                # SSE requires every line to have
-                # its own data: prefix.
-                for line in token.split("\n"):
-                    yield f"data: {line}\n"
+                for token in response_stream:
 
-                # Blank line terminates this SSE event.
-                yield "\n"
+                    full_response += token
+
+                    # Normalize line endings for SSE.
+                    token = token.replace(
+                        "\r\n",
+                        "\n",
+                    ).replace(
+                        "\r",
+                        "\n",
+                    )
+
+                    # SSE requires every line to have
+                    # its own data: prefix.
+                    for line in token.split("\n"):
+                        yield f"data: {line}\n"
+
+                    # Blank line terminates this SSE event.
+                    yield "\n"
+
+            except APIStatusError as error:
+
+                if error.status_code == 413:
+
+                    failure_message = get_model_limit_message()
+
+                    yield (
+                        "event: stream_error\n"
+                        f"data: {json.dumps(failure_message)}\n\n"
+                    )
+
+                    create_message(
+                        db=db,
+                        chat_id=chat.id,
+                        role="assistant",
+                        content=failure_message,
+                    )
+
+                    db.commit()
+
+                    return
+
+                raise
 
             # -------------------------------------------------
             # Add citations
@@ -481,19 +551,10 @@ class ChatService:
                     rag_sources,
                 )
 
-                serialized_sources = [
-                    {
-                        "document_id": source.document_id,
-                        "document_name": source.document_name,
-                        "page_number": source.page_number,
-                    }
-                    for source in rag_sources
-                ]
-
                 # Send citations to frontend.
                 yield (
                     "event: sources\n"
-                    f"data: {json.dumps(serialize_rag_sources(serialized_sources))}\n\n"
+                    f"data: {json.dumps(serialize_rag_sources(rag_sources))}\n\n"
                 )
 
                 # Persist citations together with answer.
@@ -588,24 +649,19 @@ class ChatService:
                 user_id=user_id,
             )
 
-            conversation = []
-
-            for message in history:
-
-                content = message.content
+            def transform_structured_message(message, content):
 
                 if message.id == user_message.id:
-
-                    content = build_structured_analysis_prompt(
-                        message.content,
+                    return build_structured_analysis_prompt(
+                        content,
                     )
 
-                conversation.append(
-                    {
-                        "role": message.role,
-                        "content": content,
-                    }
-                )
+                return content
+
+            conversation = build_limited_conversation(
+                history,
+                transform_message=transform_structured_message,
+            )
 
             response = provider.generate_structured_response(
                 conversation,
@@ -682,15 +738,9 @@ class ChatService:
                 user_id=user_id,
             )
 
-            conversation = []
-
-            for message in history:
-                conversation.append(
-                    {
-                        "role": message.role,
-                        "content": message.content,
-                    }
-                )
+            conversation = build_limited_conversation(
+                history,
+            )
 
             response_message = provider.generate_with_tools(
                 conversation,

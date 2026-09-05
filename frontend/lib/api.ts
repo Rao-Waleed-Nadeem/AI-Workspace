@@ -81,7 +81,10 @@ export async function sendMessage(
       } catch (error) {
         console.error("Failed to parse RAG sources:", error);
       }
-    } else if (currentEventType === "rag_error") {
+    } else if (
+      currentEventType === "rag_error" ||
+      currentEventType === "stream_error"
+    ) {
       try {
         const errorMessage = JSON.parse(data);
 
