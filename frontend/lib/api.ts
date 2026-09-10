@@ -1,6 +1,7 @@
 import { getAuthHeaders } from "./auth";
 import { Attachment } from "../types/attachment";
-import { Message } from "@/types/chat";
+import { Document } from "../types/document";
+import { Memory } from "../types/memory";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -160,15 +161,6 @@ export async function sendMessage(
   };
 }
 
-export interface Document {
-  id: number;
-  original_name: string;
-  mime_type: string;
-  size: number;
-  page_count: number;
-  created_at: string;
-}
-
 export async function getDocuments(): Promise<Document[]> {
   const response = await fetch(`${API_URL}/files`, {
     headers: getAuthHeaders(),
@@ -183,9 +175,7 @@ export async function getDocuments(): Promise<Document[]> {
   return data.documents;
 }
 
-export async function uploadDocument(
-  file: File,
-): Promise<Document> {
+export async function uploadDocument(file: File): Promise<Document> {
   const formData = new FormData();
 
   formData.append("file", file);
@@ -194,26 +184,18 @@ export async function uploadDocument(
 
   delete authHeaders["Content-Type"];
 
-  const response = await fetch(
-    `${API_URL}/files/upload`,
-    {
-      method: "POST",
-      headers: authHeaders,
-      body: formData,
-    },
-  );
+  const response = await fetch(`${API_URL}/files/upload`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
 
-    console.error(
-      "Document upload error:",
-      errorText,
-    );
+    console.error("Document upload error:", errorText);
 
-    throw new Error(
-      "Failed to upload document",
-    );
+    throw new Error("Failed to upload document");
   }
 
   const data = await response.json();
@@ -318,3 +300,42 @@ export async function sendVisionMessage(
 
   return data;
 }
+
+export async function getMemories(): Promise<Memory[]> {
+  const response = await fetch(`${API_URL}/memory`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load memories");
+  }
+
+  return response.json();
+}
+
+export async function deleteMemory(memoryId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/memory/${memoryId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete memory");
+  }
+}
+
+export async function clearMemories(): Promise<{
+  deleted_count: number;
+}> {
+  const response = await fetch(`${API_URL}/memory`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to clear memories");
+  }
+
+  return response.json();
+}
+

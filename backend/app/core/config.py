@@ -84,5 +84,12 @@ class Settings:
             )
         )
 
+        self.MEMORY_MAX_ITEMS = int(
+            os.getenv(
+                "MEMORY_MAX_ITEMS",
+                "20",
+            )
+        )
+
 
 settings = Settings()

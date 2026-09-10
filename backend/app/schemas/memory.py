@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -17,3 +19,14 @@ class MemoryExtractionResponse(BaseModel):
     memories: list[MemoryCandidate] = Field(
         default_factory=list,
     )
+
+
+class MemoryResponse(BaseModel):
+    id: int
+    key: str
+    value: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

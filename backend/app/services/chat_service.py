@@ -16,6 +16,7 @@ from app.services.rag_context_service import (
     build_rag_context,
 )
 from app.services.retrieval_service import RetrievalService
+from app.services.memory_service import MemoryService
 
 from app.services.rag_validation_service import (
     validate_document_for_rag,
@@ -97,10 +98,7 @@ def build_limited_conversation(
         if transform_message is not None:
             content = transform_message(message, content)
 
-        remaining_characters = (
-            settings.CHAT_HISTORY_MAX_CHARACTERS
-            - total_characters
-        )
+        remaining_characters = settings.CHAT_HISTORY_MAX_CHARACTERS - total_characters
 
         if remaining_characters <= 0:
             break
@@ -135,8 +133,11 @@ class ChatService:
     def __init__(
         self,
         retrieval_service: RetrievalService | None = None,
+        memory_service: MemoryService | None = None,
     ):
         self.retrieval_service = retrieval_service or RetrievalService()
+
+        self.memory_service = memory_service or MemoryService()
 
     def generate_response(
         self,
@@ -186,6 +187,15 @@ class ChatService:
 
             conversation = build_limited_conversation(
                 history,
+            )
+
+            memories = self.memory_service.get_relevant_memories(
+                db=db,
+                user_id=user_id,
+            )
+
+            memory_context = self.memory_service.build_memory_context(
+                memories,
             )
 
             rag_sources = []
@@ -245,10 +255,18 @@ class ChatService:
                     user_id=user_id,
                 )
 
+            if memory_context:
+                conversation.insert(
+                    0,
+                    {
+                        "role": "system",
+                        "content": memory_context,
+                    },
+                )
+
             reply = provider.generate_response(
                 conversation,
             )
-
             if rag_sources:
                 formatted_sources = format_rag_sources(
                     rag_sources,
@@ -346,6 +364,24 @@ class ChatService:
                 history,
                 transform_message=transform_stream_message,
             )
+
+            memories = self.memory_service.get_relevant_memories(
+                db=db,
+                user_id=user_id,
+            )
+
+            memory_context = self.memory_service.build_memory_context(
+                memories,
+            )
+
+            if memory_context:
+                conversation.insert(
+                    0,
+                    {
+                        "role": "system",
+                        "content": memory_context,
+                    },
+                )
 
             # -------------------------------------------------
             # RAG setup

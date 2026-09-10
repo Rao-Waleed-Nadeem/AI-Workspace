@@ -11,9 +11,9 @@ import {
   sendVisionMessage,
   getDocuments,
   uploadDocument,
-  Document,
 } from "@/lib/api";
 import { Message } from "@/types/chat";
+import { Document } from "@/types/document";
 import { useAuth } from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
 
@@ -409,6 +409,13 @@ export default function Home() {
                   className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
                 >
                   Logout
+                </button>
+
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+                >
+                  Settings
                 </button>
               </>
             ) : (
