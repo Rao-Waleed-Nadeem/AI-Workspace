@@ -26,3 +26,10 @@ class BaseAIProvider(ABC):
     ) -> str:
 
         pass
+
+    @abstractmethod
+    def generate_structured_response(
+        self,
+        messages: list[dict],
+    ) -> str:
+        pass
