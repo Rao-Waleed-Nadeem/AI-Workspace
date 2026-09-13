@@ -6,14 +6,14 @@ and appropriate to remember across future conversations.
 
 Return JSON with exactly this shape:
 
-{
+{{
   "memories": [
-    {
+    {{
       "key": "short_canonical_key",
       "value": "concise fact or preference"
-    }
+    }}
   ]
-}
+}}
 
 Remember information only when it is:
 
@@ -28,13 +28,17 @@ Do NOT extract:
 - financial account/payment information;
 - highly sensitive personal information;
 - precise location information;
+- preferred language or response language;
 - one-time requests or temporary circumstances;
 - facts about other people that are not necessary for the user's own interaction;
 - guesses, assumptions, or information inferred only from writing style;
 - trivial facts that have little future value.
 
-Use a stable, reusable key such as "response_style" or "preferred_language"
-when appropriate.
+Use a stable, reusable key such as "response_style" when appropriate.
+
+Do not save the user's preferred language. The assistant should respond in the
+language used by the user's current request unless the current request says
+otherwise.
 
 Keep values concise.
 

@@ -9,6 +9,12 @@ from app.schemas.memory import (
     MemoryExtractionResponse,
 )
 
+EXCLUDED_MEMORY_KEYS = {
+    "language",
+    "preferred_language",
+    "response_language",
+}
+
 
 class MemoryExtractionError(Exception):
     """Raised when AI returns invalid memory extraction data."""
@@ -96,6 +102,7 @@ class MemoryExtractionService:
                 not key
                 or not value
                 or key in seen_keys
+                or key in EXCLUDED_MEMORY_KEYS
             ):
                 continue
 

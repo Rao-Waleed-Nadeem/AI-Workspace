@@ -1,11 +1,14 @@
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+
 from app.repositories.memory_repository import (
     delete_all_memories,
     delete_memory,
     get_user_memories,
+    upsert_memory,
 )
+from app.schemas.memory import MemoryCandidate
 
 
 class MemoryService:
@@ -33,6 +36,23 @@ class MemoryService:
             user_id=user_id,
             limit=100,
         )
+
+    def save_memories(
+        self,
+        db: Session,
+        user_id: int,
+        memories: list[MemoryCandidate],
+    ) -> None:
+
+        for memory in memories:
+            upsert_memory(
+                db=db,
+                user_id=user_id,
+                key=memory.key,
+                value=memory.value,
+            )
+
+        db.flush()
 
     def remove_memory(
         self,
@@ -72,9 +92,7 @@ class MemoryService:
         ]
 
         for memory in memories:
-            lines.append(
-                f"- {memory.key}: {memory.value}"
-            )
+            lines.append(f"- {memory.key}: {memory.value}")
 
         lines.append(
             "Use these memories only when they are relevant to "

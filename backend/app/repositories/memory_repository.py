@@ -38,6 +38,32 @@ def get_memory_by_key(
         .first()
     )
 
+def upsert_memory(
+    db: Session,
+    user_id: int,
+    key: str,
+    value: str,
+) -> Memory:
+
+    memory = get_memory_by_key(
+        db=db,
+        user_id=user_id,
+        key=key,
+    )
+
+    if memory is None:
+        memory = create_memory(
+            db=db,
+            user_id=user_id,
+            key=key,
+            value=value,
+        )
+    else:
+        memory.value = value
+        db.flush()
+        db.refresh(memory)
+
+    return memory
 
 def get_user_memories(
     db: Session,

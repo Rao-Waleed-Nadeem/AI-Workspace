@@ -18,6 +18,11 @@ from app.services.rag_context_service import (
 from app.services.retrieval_service import RetrievalService
 from app.services.memory_service import MemoryService
 
+from app.services.memory_extraction_service import (
+    MemoryExtractionError,
+    MemoryExtractionService,
+)
+
 from app.services.rag_validation_service import (
     validate_document_for_rag,
     validate_retrieval_results,
@@ -134,10 +139,44 @@ class ChatService:
         self,
         retrieval_service: RetrievalService | None = None,
         memory_service: MemoryService | None = None,
+        memory_extraction_service: MemoryExtractionService | None = None,
     ):
         self.retrieval_service = retrieval_service or RetrievalService()
 
         self.memory_service = memory_service or MemoryService()
+
+        self.memory_extraction_service = (
+            memory_extraction_service or MemoryExtractionService(provider=provider)
+        )
+
+    def _extract_and_save_memories(
+        self,
+        db: Session,
+        user_id: int,
+        message: str,
+    ) -> None:
+
+        try:
+            memory_candidates = self.memory_extraction_service.extract(
+                message,
+            )
+
+            if not memory_candidates:
+                return
+
+            self.memory_service.save_memories(
+                db=db,
+                user_id=user_id,
+                memories=memory_candidates,
+            )
+
+            print(f"Saved {len(memory_candidates)} memory item(s).")
+
+        except MemoryExtractionError as error:
+            print(f"Memory extraction failed: {error}")
+
+        except Exception as error:
+            print(f"Memory persistence failed: {error}")
 
     def generate_response(
         self,
@@ -279,6 +318,12 @@ class ChatService:
                 chat_id=chat.id,
                 role="assistant",
                 content=reply,
+            )
+
+            self._extract_and_save_memories(
+                db=db,
+                user_id=user_id,
+                message=request.message,
             )
 
             db.commit()
@@ -607,6 +652,12 @@ class ChatService:
                 chat_id=chat.id,
                 role="assistant",
                 content=final_response,
+            )
+
+            self._extract_and_save_memories(
+                db=db,
+                user_id=user_id,
+                message=request.message,
             )
 
             db.commit()
