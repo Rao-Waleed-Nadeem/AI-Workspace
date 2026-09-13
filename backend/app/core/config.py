@@ -39,6 +39,13 @@ class Settings:
             "black-forest-labs/FLUX.1-schnell",
         )
 
+        self.IMAGE_GENERATION_RETRIES = int(
+            os.getenv(
+                "IMAGE_GENERATION_RETRIES",
+                "1",
+            )
+        )
+
         self.HF_TOKEN = os.getenv(
             "HF_TOKEN",
         )

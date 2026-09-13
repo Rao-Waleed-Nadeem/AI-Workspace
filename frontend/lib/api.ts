@@ -369,3 +369,17 @@ export async function generateImage(
 
   return response.json();
 }
+
+export async function fetchGeneratedImage(
+  imageUrl: string,
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}${imageUrl}`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load generated image");
+  }
+
+  return response.blob();
+}

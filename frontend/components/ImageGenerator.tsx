@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { generateImage } from "@/lib/api";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://127.0.0.1:8000";
+import { useEffect, useState } from "react";
+import {
+  fetchGeneratedImage,
+  generateImage,
+} from "@/lib/api";
 
 export default function ImageGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -31,9 +30,12 @@ export default function ImageGenerator() {
     try {
       const result =
         await generateImage(trimmedPrompt);
+      const imageBlob = await fetchGeneratedImage(
+        result.url,
+      );
 
       setImageUrl(
-        `${API_URL}${result.url}`,
+        URL.createObjectURL(imageBlob),
       );
     } catch (error) {
       console.error(
@@ -48,6 +50,14 @@ export default function ImageGenerator() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -114,7 +124,7 @@ export default function ImageGenerator() {
           <img
             src={imageUrl}
             alt={prompt}
-            className="max-h-[600px] w-full rounded-xl object-contain"
+            className="max-h-150 w-full rounded-xl object-contain"
           />
         </div>
       )}
