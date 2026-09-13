@@ -34,6 +34,11 @@ class Settings:
             "huggingface",
         )
 
+        self.IMAGE_MODEL_NAME = os.getenv(
+            "IMAGE_MODEL_NAME",
+            "black-forest-labs/FLUX.1-schnell",
+        )
+
         self.HF_TOKEN = os.getenv(
             "HF_TOKEN",
         )
