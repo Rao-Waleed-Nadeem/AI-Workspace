@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import ChatInput from "@/components/ChatInput";
 import ChatWindow from "@/components/ChatWindow";
+import ImageGenerator from "@/components/ImageGenerator";
 import {
   sendMessage,
   getChatMessages,
@@ -497,6 +498,10 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <div className="mt-6">
+          <ImageGenerator />
+        </div>
       </div>
     </main>
   );

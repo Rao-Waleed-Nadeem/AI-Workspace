@@ -5,3 +5,4 @@ from .attachment import Attachment
 from .document import Document
 from .document_chunk import DocumentChunk
 from .memory import Memory
+from .generated_image import GeneratedImage

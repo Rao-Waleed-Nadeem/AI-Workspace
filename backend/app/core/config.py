@@ -48,6 +48,18 @@ class Settings:
             "sentence-transformers/all-MiniLM-L6-v2",
         )
 
+        self.GENERATED_IMAGE_DIR = os.getenv(
+            "GENERATED_IMAGE_DIR",
+            "uploads/generated_images",
+        )
+
+        self.GENERATED_IMAGE_EXPIRATION_HOURS = int(
+            os.getenv(
+                "GENERATED_IMAGE_EXPIRATION_HOURS",
+                "24",
+            )
+        )
+
         self.EMBEDDING_DIMENSIONS = int(
             os.getenv(
                 "EMBEDDING_DIMENSIONS",

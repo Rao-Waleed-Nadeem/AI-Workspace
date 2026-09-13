@@ -2,6 +2,7 @@ import { getAuthHeaders } from "./auth";
 import { Attachment } from "../types/attachment";
 import { Document } from "../types/document";
 import { Memory } from "../types/memory";
+import { GeneratedImage } from "../types/generatedImage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -339,3 +340,32 @@ export async function clearMemories(): Promise<{
   return response.json();
 }
 
+export async function generateImage(
+  prompt: string,
+): Promise<GeneratedImage> {
+  const response = await fetch(
+    `${API_URL}/images/generate`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        prompt,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    console.error(
+      "Image generation error:",
+      errorText,
+    );
+
+    throw new Error(
+      "Failed to generate image",
+    );
+  }
+
+  return response.json();
+}
