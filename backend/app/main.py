@@ -6,6 +6,7 @@ from app.routes.files import router as files_router
 from fastapi.staticfiles import StaticFiles
 from app.routes.memory import router as memory_router
 from app.routes.images import router as images_router
+from app.routes.speech import router as speech_router
 
 app = FastAPI()
 
@@ -14,6 +15,7 @@ app.include_router(auth_router)
 app.include_router(files_router)
 app.include_router(memory_router)
 app.include_router(images_router)
+app.include_router(speech_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -27,3 +27,5 @@ docker/postgres/
 /backend/test_real_rag.py
 /backend/test_retrieval.py
 
+# Graphify generated files
+graphify-out/

@@ -115,5 +115,17 @@ class Settings:
             )
         )
 
+        self.SPEECH_TO_TEXT_MODEL_NAME = os.getenv(
+            "SPEECH_TO_TEXT_MODEL_NAME",
+            "whisper-large-v3-turbo",
+        )
+
+        self.MAX_AUDIO_SIZE = int(
+            os.getenv(
+                "MAX_AUDIO_SIZE",
+                str(25 * 1024 * 1024),
+            )
+        )
+
 
 settings = Settings()

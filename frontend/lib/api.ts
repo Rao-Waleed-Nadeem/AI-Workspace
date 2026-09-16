@@ -383,3 +383,39 @@ export async function fetchGeneratedImage(
 
   return response.blob();
 }
+
+export async function transcribeAudio(
+  file: File,
+): Promise<{ transcript: string }> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const authHeaders = getAuthHeaders();
+
+  delete authHeaders["Content-Type"];
+
+  const response = await fetch(
+    `${API_URL}/speech/transcribe`,
+    {
+      method: "POST",
+      headers: authHeaders,
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    console.error(
+      "Speech-to-text error:",
+      errorText,
+    );
+
+    throw new Error(
+      "Failed to transcribe audio",
+    );
+  }
+
+  return response.json();
+}
