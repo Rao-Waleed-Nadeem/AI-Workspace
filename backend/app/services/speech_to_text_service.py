@@ -105,7 +105,7 @@ class SpeechToTextService:
 
     @staticmethod
     async def _get_file_size(file: UploadFile) -> int:
-        await file.file.seek(0, 2)
-        size = await file.file.tell()
-        await file.file.seek(0)
+        file.file.seek(0, 2)
+        size = file.file.tell()
+        file.file.seek(0)
         return size

@@ -419,3 +419,41 @@ export async function transcribeAudio(
 
   return response.json();
 }
+
+export async function synthesizeSpeech(
+  text: string,
+): Promise<{
+  audio_chunks: string[];
+}> {
+
+  const response = await fetch(
+    `${API_URL}/speech/synthesize`,
+    {
+      method: "POST",
+
+      headers: getAuthHeaders(),
+
+      body: JSON.stringify({
+        text,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+
+    const errorText =
+      await response.text();
+
+    console.error(
+      "Text-to-speech error:",
+      errorText,
+    );
+
+    throw new Error(
+      "Failed to generate speech",
+    );
+  }
+
+  return response.json();
+}
+

@@ -12,6 +12,8 @@ import {
   sendVisionMessage,
   getDocuments,
   uploadDocument,
+  transcribeAudio,
+  synthesizeSpeech,
 } from "@/lib/api";
 import { Message } from "@/types/chat";
 import { Document } from "@/types/document";
@@ -137,14 +139,17 @@ export default function Home() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (
+    messageOverride?: string,
+    speakResponse = false,
+  ) => {
     if ((!input.trim() && !selectedFile) || isLoading) {
       return;
     }
 
     setIsLoading(true);
 
-    const message = input;
+    const message = messageOverride ?? input;
 
     // Temporary frontend attachment.
     // The negative ID makes it impossible to conflict
@@ -178,17 +183,11 @@ export default function Home() {
     };
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
-
     setInput("");
 
     try {
       if (selectedFile) {
         const response = await sendVisionMessage(chatId, message, selectedFile);
-
-        // if (response.chat_id !== null) {
-        //   setChatId(response.chat_id);
-        //   localStorage.setItem("chatId", String(response.chat_id));
-        // }
 
         setMessages((prev) =>
           prev.map((msg) => {
@@ -210,68 +209,94 @@ export default function Home() {
           }),
         );
 
-        // ---------------------------------------------
-        // Release temporary browser object URL
-        // ---------------------------------------------
-
         if (temporaryAttachment) {
           URL.revokeObjectURL(temporaryAttachment.storage_path);
         }
 
         setSelectedFile(null);
-
         setChatId(response.chat_id);
         localStorage.setItem("chatId", String(response.chat_id));
 
-        setSelectedFile(null);
-
         return;
-      } else {
-        const {
-          text,
-          chatId: returnedChatId,
-          sources,
-        } = await sendMessage(
-          message,
-          chatId,
-          (streamedText) => {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantId
-                  ? {
-                      ...msg,
-                      content: streamedText,
-                    }
-                  : msg,
-              ),
+      }
+
+      const {
+        text,
+        chatId: returnedChatId,
+        sources,
+      } = await sendMessage(
+        message,
+        chatId,
+        (streamedText) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? {
+                    ...msg,
+                    content: streamedText,
+                  }
+                : msg,
+            ),
+          );
+        },
+        action,
+        selectedDocumentId,
+      );
+
+      if (returnedChatId !== null) {
+        setChatId(returnedChatId);
+        localStorage.setItem("chatId", String(returnedChatId));
+      }
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                content: text,
+                sources,
+              }
+            : msg,
+        ),
+      );
+      setSelectedDocumentId(null);
+
+      if (speakResponse && text.trim()) {
+        try {
+          const speech = await synthesizeSpeech(text);
+
+          for (const chunk of speech.audio_chunks) {
+            const binary = atob(chunk);
+            const bytes = new Uint8Array(binary.length);
+
+            for (let index = 0; index < binary.length; index += 1) {
+              bytes[index] = binary.charCodeAt(index);
+            }
+
+            const audioUrl = URL.createObjectURL(
+              new Blob([bytes], { type: "audio/wav" }),
             );
-          },
-          action,
-          selectedDocumentId,
-        );
+            const audio = new Audio(audioUrl);
 
-        if (returnedChatId !== null) {
-          setChatId(returnedChatId);
-          localStorage.setItem("chatId", String(returnedChatId));
+            try {
+              await audio.play();
+
+              await new Promise<void>((resolve) => {
+                audio.onended = () => resolve();
+                audio.onerror = () => resolve();
+              });
+            } finally {
+              URL.revokeObjectURL(audioUrl);
+            }
+          }
+        } catch (speechError) {
+          console.error("Voice response playback failed:", speechError);
         }
-
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantId
-              ? {
-                  ...msg,
-                  content: text,
-                  sources,
-                }
-              : msg,
-          ),
-        );
-        setSelectedDocumentId(null);
       }
     } catch (error) {
       console.error(error);
 
-      // Remove optimistic messages if request fails
+      // Remove optimistic messages if request fails.
       setMessages((prev) =>
         prev.filter(
           (msg) => msg.id !== userMessageId && msg.id !== assistantId,
@@ -281,6 +306,36 @@ export default function Home() {
       setSelectedFile(null);
       setIsLoading(false);
       setAction(null);
+    }
+  };
+
+  const handleVoiceMessage = async (file: File) => {
+    if (isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Audio → transcript
+      const { transcript } = await transcribeAudio(file);
+
+      if (!transcript.trim()) {
+        throw new Error("No speech was detected.");
+      }
+
+      // Let handleSend control the chat loading state.
+      setIsLoading(false);
+
+      // 2. Transcript → existing chat
+      // 3. AI response → speech
+      await handleSend(transcript, true);
+    } catch (error) {
+      console.error("Voice chat failed:", error);
+
+      alert(error instanceof Error ? error.message : "Voice chat failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -475,6 +530,7 @@ export default function Home() {
               documents={documents}
               onUploadDocument={handleUploadDocument}
               onSend={handleSend}
+              onVoiceMessage={handleVoiceMessage}
               isLoading={isLoading}
             />
 

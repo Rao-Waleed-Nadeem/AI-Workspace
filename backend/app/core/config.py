@@ -127,5 +127,29 @@ class Settings:
             )
         )
 
+        self.TEXT_TO_SPEECH_MODEL_NAME = os.getenv(
+            "TEXT_TO_SPEECH_MODEL_NAME",
+            "canopylabs/orpheus-v1-english",
+        )
+
+        self.TEXT_TO_SPEECH_VOICE = os.getenv(
+            "TEXT_TO_SPEECH_VOICE",
+            "troy",
+        )
+
+        self.TEXT_TO_SPEECH_CHUNK_SIZE = int(
+            os.getenv(
+                "TEXT_TO_SPEECH_CHUNK_SIZE",
+                "200",
+            )
+        )
+
+        self.MAX_TEXT_TO_SPEECH_CHARACTERS = int(
+            os.getenv(
+                "MAX_TEXT_TO_SPEECH_CHARACTERS",
+                "2000",
+            )
+        )
+
 
 settings = Settings()

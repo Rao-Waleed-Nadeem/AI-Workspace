@@ -7,11 +7,15 @@ from fastapi.staticfiles import StaticFiles
 from app.routes.memory import router as memory_router
 from app.routes.images import router as images_router
 from app.routes.speech import router as speech_router
+from app.routes.text_to_speech import (
+    router as text_to_speech_router,
+)
 
 app = FastAPI()
 
 app.include_router(router)
 app.include_router(auth_router)
+app.include_router(text_to_speech_router)
 app.include_router(files_router)
 app.include_router(memory_router)
 app.include_router(images_router)
