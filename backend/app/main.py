@@ -38,8 +38,8 @@ def root():
         "message": "Hello AI Workspace"
     }
 
-app.mount(
-    "/uploads",
-    StaticFiles(directory="uploads"),
-    name="uploads",
-)
+# app.mount(
+#     "/uploads",
+#     StaticFiles(directory="uploads"),
+#     name="uploads",
+# )

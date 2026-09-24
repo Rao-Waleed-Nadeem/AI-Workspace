@@ -33,3 +33,7 @@ class BaseAIProvider(ABC):
         messages: list[dict],
     ) -> str:
         pass
+
+    @abstractmethod
+    def stream_response(self, messages: list[dict]):
+        pass

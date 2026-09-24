@@ -95,8 +95,8 @@ class GroqProvider(BaseAIProvider):
 
         message = completion.choices[0].message
 
-        print("CONTENT:", message.content)
-        print("TOOL CALLS:", message.tool_calls)
+        # print("CONTENT:", message.content)
+        # print("TOOL CALLS:", message.tool_calls)
 
         return message
 

@@ -1,3 +1,5 @@
+import { createApiError } from "./errors";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 export interface User {
@@ -22,13 +24,17 @@ export async function register(email: string, password: string) {
     }),
   });
 
+  if (!response.ok) {
+    throw await createApiError(response, "Registration failed.");
+  }
+
   const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(
-      typeof data.detail === "string" ? data.detail : "Registration failed",
-    );
-  }
+  // if (!response.ok) {
+  //   throw new Error(
+  //     typeof data.detail === "string" ? data.detail : "Registration failed",
+  //   );
+  // }
 
   return data;
 }
@@ -49,13 +55,17 @@ export async function login(
     body: formData.toString(),
   });
 
+  if (!response.ok) {
+    throw await createApiError(response, "Authentication failed.");
+  }
+
   const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(
-      typeof data.detail === "string" ? data.detail : "Login failed",
-    );
-  }
+  // if (!response.ok) {
+  //   throw new Error(
+  //     typeof data.detail === "string" ? data.detail : "Login failed",
+  //   );
+  // }
 
   localStorage.setItem("access_token", data.access_token);
 

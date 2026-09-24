@@ -51,7 +51,8 @@ from app.utils.image_encoder import (
     encode_image,
 )
 
-from app.providers.groq_provider import GroqProvider
+from app.providers.base_provider import BaseAIProvider
+from app.providers.factory import create_ai_provider
 
 from app.prompts.prompt_service import build_explain_prompt
 
@@ -81,8 +82,6 @@ from app.services.rag_exceptions import (
     NoRelevantContextError,
     UnsupportedDocumentError,
 )
-
-provider = GroqProvider()
 
 
 def build_limited_conversation(
@@ -140,6 +139,7 @@ class ChatService:
         retrieval_service: RetrievalService | None = None,
         memory_service: MemoryService | None = None,
         memory_extraction_service: MemoryExtractionService | None = None,
+        provider: BaseAIProvider | None = None,
     ):
         self.retrieval_service = retrieval_service or RetrievalService()
 
@@ -148,6 +148,8 @@ class ChatService:
         self.memory_extraction_service = (
             memory_extraction_service or MemoryExtractionService(provider=provider)
         )
+
+        self.provider = provider or create_ai_provider()
 
     def _extract_and_save_memories(
         self,
@@ -170,7 +172,7 @@ class ChatService:
                 memories=memory_candidates,
             )
 
-            print(f"Saved {len(memory_candidates)} memory item(s).")
+            # print(f"Saved {len(memory_candidates)} memory item(s).")
 
         except MemoryExtractionError as error:
             print(f"Memory extraction failed: {error}")
@@ -193,7 +195,7 @@ class ChatService:
                     title="New Chat",
                     user_id=user_id,
                 )
-                print("chat", chat)
+                # print("chat", chat)
 
             else:
 
@@ -202,7 +204,7 @@ class ChatService:
                     chat_id=request.chat_id,
                     user_id=user_id,
                 )
-                print("chat", chat)
+                # print("chat", chat)
 
                 if chat is None:
 
@@ -328,7 +330,7 @@ class ChatService:
 
             db.commit()
 
-            print("reply", reply)
+            # print("reply", reply)
 
             return ChatResponse(
                 chat_id=chat.id,
@@ -912,7 +914,7 @@ class ChatService:
                     title="New Chat",
                     user_id=user_id,
                 )
-                print("chat", chat)
+                # print("chat", chat)
 
             else:
 
@@ -921,7 +923,7 @@ class ChatService:
                     chat_id=request.chat_id,
                     user_id=user_id,
                 )
-                print("chat", chat)
+                # print("chat", chat)
 
                 if chat is None:
 
@@ -1005,7 +1007,7 @@ class ChatService:
 
             db.commit()
 
-            print("reply", reply)
+            # print("reply", reply)
 
             return ChatResponse(
                 chat_id=chat.id,
