@@ -10,8 +10,30 @@ from app.routes.speech import router as speech_router
 from app.routes.text_to_speech import (
     router as text_to_speech_router,
 )
+from app.core.logging_config import configure_logging
+from app.middleware.request_logging import (
+    RequestLoggingMiddleware,
+)
+
+from app.core.errors import AppError
+from app.core.error_handlers import (
+    app_error_handler,
+    database_error_handler,
+    http_error_handler,
+    unhandled_error_handler,
+    validation_error_handler,
+)
+from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
+
+configure_logging()
 
 app = FastAPI()
+
+app.add_middleware(
+    RequestLoggingMiddleware,
+)
 
 app.include_router(router)
 app.include_router(auth_router)
@@ -20,6 +42,31 @@ app.include_router(files_router)
 app.include_router(memory_router)
 app.include_router(images_router)
 app.include_router(speech_router)
+
+app.add_exception_handler(
+    AppError,
+    app_error_handler,
+)
+
+app.add_exception_handler(
+    HTTPException,
+    http_error_handler,
+)
+
+app.add_exception_handler(
+    RequestValidationError,
+    validation_error_handler,
+)
+
+app.add_exception_handler(
+    SQLAlchemyError,
+    database_error_handler,
+)
+
+app.add_exception_handler(
+    Exception,
+    unhandled_error_handler,
+)
 
 app.add_middleware(
     CORSMiddleware,

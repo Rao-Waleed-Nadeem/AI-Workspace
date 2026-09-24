@@ -151,5 +151,49 @@ class Settings:
             )
         )
 
+        self.LOG_LEVEL = os.getenv(
+            "LOG_LEVEL",
+            "INFO",
+        )
+
+        self.AI_RATE_LIMIT_REQUESTS = int(
+    os.getenv(
+        "AI_RATE_LIMIT_REQUESTS",
+        "20",
+    )
+)
+
+        self.AI_RATE_LIMIT_WINDOW_SECONDS = int(
+    os.getenv(
+        "AI_RATE_LIMIT_WINDOW_SECONDS",
+        "60",
+    )
+)
+
+        self.AUTH_RATE_LIMIT_REQUESTS = int(
+    os.getenv(
+        "AUTH_RATE_LIMIT_REQUESTS",
+        "10",
+    )
+)
+
+        self.AUTH_RATE_LIMIT_WINDOW_SECONDS = int(
+    os.getenv(
+        "AUTH_RATE_LIMIT_WINDOW_SECONDS",
+        "60",
+    )
+)
+
+    @staticmethod
+    def _required_env(name: str) -> str:
+        value = os.getenv(name, "").strip()
+
+        if not value:
+            raise RuntimeError(
+                f"Required environment variable is missing: {name}"
+            )
+
+        return value
+
 
 settings = Settings()

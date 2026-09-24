@@ -22,3 +22,19 @@ class DatabaseUnavailableError(DatabaseError):
     status_code = 503
     message = "The database is temporarily unavailable."
 
+class RateLimitError(AppError):
+    code = "rate_limited"
+    status_code = 429
+    message = (
+        "Too many requests. "
+        "Please try again later."
+    )
+
+    def __init__(
+        self,
+        *,
+        retry_after: int,
+    ):
+        super().__init__(self.message)
+        self.retry_after = retry_after
+

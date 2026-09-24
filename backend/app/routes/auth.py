@@ -13,6 +13,8 @@ from app.services.auth_service import AuthService
 from app.core.dependencies import get_current_user
 from app.models import User
 
+from app.core.rate_limit import rate_limit_auth
+
 
 router = APIRouter(
     prefix="/auth",
@@ -29,6 +31,7 @@ auth_service = AuthService()
 def register(
     request: RegisterRequest,
     db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_auth),
 ):
     return auth_service.register(
         db=db,
@@ -43,6 +46,7 @@ def login(
     # request: LoginRequest,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_auth),
 ):
     
     request = LoginRequest(
