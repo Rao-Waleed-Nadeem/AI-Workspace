@@ -129,13 +129,13 @@ class Settings:
 
         self.TEXT_TO_SPEECH_MODEL_NAME = os.getenv(
             "TEXT_TO_SPEECH_MODEL_NAME",
-            "canopylabs/orpheus-v1-english",
-        )
+            "",
+        ).strip()
 
         self.TEXT_TO_SPEECH_VOICE = os.getenv(
             "TEXT_TO_SPEECH_VOICE",
-            "troy",
-        )
+            "",
+        ).strip()
 
         self.TEXT_TO_SPEECH_CHUNK_SIZE = int(
             os.getenv(

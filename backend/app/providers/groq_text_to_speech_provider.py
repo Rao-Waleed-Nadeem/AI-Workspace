@@ -24,6 +24,14 @@ class GroqTextToSpeechProvider(
         voice: str,
     ) -> bytes:
 
+        if not settings.TEXT_TO_SPEECH_MODEL_NAME:
+            raise ValueError(
+                "TEXT_TO_SPEECH_MODEL_NAME is not configured."
+            )
+
+        if not voice:
+            raise ValueError("TEXT_TO_SPEECH_VOICE is not configured.")
+
         response = self.client.audio.speech.create(
             model=settings.TEXT_TO_SPEECH_MODEL_NAME,
             voice=voice,

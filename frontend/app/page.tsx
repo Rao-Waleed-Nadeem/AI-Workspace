@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import ChatInput from "@/components/ChatInput";
 import ChatWindow from "@/components/ChatWindow";
 import ImageGenerator from "@/components/ImageGenerator";
+import VoiceAudioPlayer from "@/components/VoiceAudioPlayer";
 import {
   sendMessage,
   getChatMessages,
@@ -31,6 +32,7 @@ export default function Home() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(
     null,
   );
+  const [voiceAudioChunks, setVoiceAudioChunks] = useState<string[]>([]);
 
   const router = useRouter();
 
@@ -143,13 +145,15 @@ export default function Home() {
     messageOverride?: string,
     speakResponse = false,
   ) => {
-    if ((!input.trim() && !selectedFile) || isLoading) {
+    const message = messageOverride ?? input;
+
+    if ((!message.trim() && !selectedFile) || isLoading) {
       return;
     }
 
     setIsLoading(true);
 
-    const message = messageOverride ?? input;
+    setVoiceAudioChunks([]);
 
     // Temporary frontend attachment.
     // The negative ID makes it impossible to conflict
@@ -265,32 +269,11 @@ export default function Home() {
         try {
           const speech = await synthesizeSpeech(text);
 
-          for (const chunk of speech.audio_chunks) {
-            const binary = atob(chunk);
-            const bytes = new Uint8Array(binary.length);
-
-            for (let index = 0; index < binary.length; index += 1) {
-              bytes[index] = binary.charCodeAt(index);
-            }
-
-            const audioUrl = URL.createObjectURL(
-              new Blob([bytes], { type: "audio/wav" }),
-            );
-            const audio = new Audio(audioUrl);
-
-            try {
-              await audio.play();
-
-              await new Promise<void>((resolve) => {
-                audio.onended = () => resolve();
-                audio.onerror = () => resolve();
-              });
-            } finally {
-              URL.revokeObjectURL(audioUrl);
-            }
-          }
+          setVoiceAudioChunks(speech.audio_chunks ?? []);
         } catch (speechError) {
-          console.error("Voice response playback failed:", speechError);
+          console.warn("Voice response is unavailable right now:", speechError);
+
+          setVoiceAudioChunks([]);
         }
       }
     } catch (error) {
@@ -323,9 +306,6 @@ export default function Home() {
       if (!transcript.trim()) {
         throw new Error("No speech was detected.");
       }
-
-      // Let handleSend control the chat loading state.
-      setIsLoading(false);
 
       // 2. Transcript → existing chat
       // 3. AI response → speech
@@ -498,6 +478,10 @@ export default function Home() {
         <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="p-5">
             <ChatWindow messages={messages} />
+
+            {voiceAudioChunks.length > 0 && (
+              <VoiceAudioPlayer audioChunks={voiceAudioChunks} />
+            )}
           </div>
 
           {/* Chat Controls */}

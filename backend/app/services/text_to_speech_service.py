@@ -20,6 +20,9 @@ class TextToSpeechService:
         text: str,
     ) -> list[bytes]:
 
+        if not settings.TEXT_TO_SPEECH_MODEL_NAME or not settings.TEXT_TO_SPEECH_VOICE:
+            return []
+
         cleaned_text = self._clean_text(
             text
         )
