@@ -42,41 +42,38 @@ class MemoryExtractionService:
             message,
         )
 
-        raw_response = (
-            self.provider.generate_structured_response(
-                [
-                    {
-                        "role": "system",
-                        "content": (
-                            "Return only valid JSON. "
-                            "Do not include Markdown, "
-                            "explanations, or extra fields."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    },
-                ]
+        try:
+            raw_response = (
+                self.provider.generate_structured_response(
+                    [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Return only valid JSON. "
+                                "Do not include Markdown, "
+                                "explanations, or extra fields."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        },
+                    ]
+                )
             )
-        )
+        except Exception as exc:
+            raise MemoryExtractionError(
+                "Memory extraction model failed to produce JSON."
+            ) from exc
 
         try:
-
-            payload = json.loads(
-                raw_response,
-            )
-
-            result = (
-                MemoryExtractionResponse
-                .model_validate(payload)
-            )
-
+            payload = json.loads(raw_response)
+            result = MemoryExtractionResponse.model_validate(payload)
         except (
             json.JSONDecodeError,
             ValidationError,
+            TypeError,
         ) as exc:
-
             raise MemoryExtractionError(
                 "AI returned an invalid memory extraction response."
             ) from exc

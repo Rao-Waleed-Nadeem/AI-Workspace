@@ -141,15 +141,14 @@ class ChatService:
         memory_extraction_service: MemoryExtractionService | None = None,
         provider: BaseAIProvider | None = None,
     ):
+        self.provider = provider or create_ai_provider()
         self.retrieval_service = retrieval_service or RetrievalService()
-
         self.memory_service = memory_service or MemoryService()
 
         self.memory_extraction_service = (
-            memory_extraction_service or MemoryExtractionService(provider=provider)
+            memory_extraction_service
+            or MemoryExtractionService(provider=self.provider)
         )
-
-        self.provider = provider or create_ai_provider()
 
     def _extract_and_save_memories(
         self,
@@ -178,6 +177,16 @@ class ChatService:
             print(f"Memory extraction failed: {error}")
 
         except Exception as error:
+            error_text = str(error)
+
+            if (
+                "json_validate_failed" in error_text
+                or "Failed to generate JSON" in error_text
+                or "Failed to generate structured" in error_text
+            ):
+                print("Memory extraction skipped: model rejected the JSON schema.")
+                return
+
             print(f"Memory persistence failed: {error}")
 
     def generate_response(
@@ -305,7 +314,7 @@ class ChatService:
                     },
                 )
 
-            reply = provider.generate_response(
+            reply = self.provider.generate_response(
                 conversation,
             )
             if rag_sources:
@@ -573,7 +582,7 @@ class ChatService:
             # -------------------------------------------------
 
             try:
-                response_stream = provider.stream_response(
+                response_stream = self.provider.stream_response(
                     conversation,
                 )
 
@@ -752,7 +761,7 @@ class ChatService:
                 transform_message=transform_structured_message,
             )
 
-            response = provider.generate_structured_response(
+            response = self.provider.generate_structured_response(
                 conversation,
             )
 
@@ -831,7 +840,7 @@ class ChatService:
                 history,
             )
 
-            response_message = provider.generate_with_tools(
+            response_message = self.provider.generate_with_tools(
                 conversation,
                 [CALCULATOR_TOOL],
             )
@@ -865,7 +874,7 @@ class ChatService:
                     }
                 )
 
-                final_message = provider.generate_with_tools(
+                final_message = self.provider.generate_with_tools(
                     conversation,
                     [CALCULATOR_TOOL],
                 )
@@ -994,7 +1003,7 @@ class ChatService:
                     }
                 )
 
-            reply = provider.generate_vision_response(
+            reply = self.provider.generate_vision_response(
                 conversation,
             )
 
