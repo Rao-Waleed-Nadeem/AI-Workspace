@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.chat import router
 from app.routes.auth import router as auth_router
@@ -30,6 +30,20 @@ from sqlalchemy.exc import SQLAlchemyError
 configure_logging()
 
 app = FastAPI()
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=()"
+    )
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; frame-ancestors 'none';"
+    )
+    return response
 
 app.add_middleware(
     RequestLoggingMiddleware,

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-
 MAX_CHUNK_CHARACTERS = 2500
 MAX_CONTEXT_CHARACTERS = 6000
 
@@ -19,7 +18,9 @@ def build_rag_context(
     if not chunks:
         return ""
 
-    sections = []
+    separator = "\n\n---\n\n"
+
+    sections: list[str] = []
     total_characters = 0
 
     for chunk in chunks:
@@ -37,32 +38,29 @@ def build_rag_context(
         if chunk.page_number is not None:
             source += f" | Page {chunk.page_number}"
 
-        section = (
-            f"[Source: {source}]\n"
-            f"{content}"
-        )
+        prefix = f"[Source: {source}]\n"
 
-        section_length = len(section)
+        remaining = MAX_CONTEXT_CHARACTERS - total_characters
 
-        if (
-            total_characters + section_length
-            > MAX_CONTEXT_CHARACTERS
-        ):
-            remaining = (
-                MAX_CONTEXT_CHARACTERS
-                - total_characters
-            )
+        separator_cost = len(separator) if sections else 0
 
-            if remaining <= 0:
-                break
+        if remaining <= separator_cost + len(prefix):
+            break
 
-            section = section[:remaining]
+        available_content = remaining - separator_cost - len(prefix)
+
+        content = content[:available_content].rstrip()
+
+        if not content:
+            break
+
+        section = prefix + content
 
         sections.append(section)
 
-        total_characters += len(section)
+        total_characters += separator_cost + len(section)
 
         if total_characters >= MAX_CONTEXT_CHARACTERS:
             break
 
-    return "\n\n---\n\n".join(sections)
+    return separator.join(sections)

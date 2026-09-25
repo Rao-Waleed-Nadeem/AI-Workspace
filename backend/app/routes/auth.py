@@ -43,17 +43,14 @@ def register(
     response_model=TokenResponse,
 )
 def login(
-    # request: LoginRequest,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
     _: None = Depends(rate_limit_auth),
 ):
-    
     request = LoginRequest(
         email=form_data.username,
         password=form_data.password,
     )
-    print("email:", request.email, "password:", request.password)
     return auth_service.login(
         db=db,
         request=request,

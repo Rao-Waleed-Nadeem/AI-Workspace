@@ -157,41 +157,74 @@ class Settings:
         )
 
         self.AI_RATE_LIMIT_REQUESTS = int(
-    os.getenv(
-        "AI_RATE_LIMIT_REQUESTS",
-        "20",
-    )
-)
+            os.getenv(
+                "AI_RATE_LIMIT_REQUESTS",
+                "20",
+            )
+        )
 
         self.AI_RATE_LIMIT_WINDOW_SECONDS = int(
-    os.getenv(
-        "AI_RATE_LIMIT_WINDOW_SECONDS",
-        "60",
-    )
-)
+            os.getenv(
+                "AI_RATE_LIMIT_WINDOW_SECONDS",
+                "60",
+            )
+        )
 
         self.AUTH_RATE_LIMIT_REQUESTS = int(
-    os.getenv(
-        "AUTH_RATE_LIMIT_REQUESTS",
-        "10",
-    )
-)
+            os.getenv(
+                "AUTH_RATE_LIMIT_REQUESTS",
+                "10",
+            )
+        )
 
         self.AUTH_RATE_LIMIT_WINDOW_SECONDS = int(
-    os.getenv(
-        "AUTH_RATE_LIMIT_WINDOW_SECONDS",
-        "60",
-    )
-)
+            os.getenv(
+                "AUTH_RATE_LIMIT_WINDOW_SECONDS",
+                "60",
+            )
+        )
+
+        self.AI_CONTEXT_WINDOW_TOKENS = int(
+            os.getenv(
+                "AI_CONTEXT_WINDOW_TOKENS",
+                "8192",
+            )
+        )
+
+        self.AI_MAX_INPUT_TOKENS = int(
+            os.getenv(
+                "AI_MAX_INPUT_TOKENS",
+                "6000",
+            )
+        )
+
+        self.AI_MAX_OUTPUT_TOKENS = int(
+            os.getenv(
+                "AI_MAX_OUTPUT_TOKENS",
+                "1200",
+            )
+        )
+
+        self.TOKEN_ESTIMATE_CHARS_PER_TOKEN = float(
+            os.getenv(
+                "TOKEN_ESTIMATE_CHARS_PER_TOKEN",
+                "4",
+            )
+        )
+
+        self.AI_MAX_TOOL_CALLS = int(
+            os.getenv(
+                "AI_MAX_TOOL_CALLS",
+                "3",
+            )
+        )
 
     @staticmethod
     def _required_env(name: str) -> str:
         value = os.getenv(name, "").strip()
 
         if not value:
-            raise RuntimeError(
-                f"Required environment variable is missing: {name}"
-            )
+            raise RuntimeError(f"Required environment variable is missing: {name}")
 
         return value
 

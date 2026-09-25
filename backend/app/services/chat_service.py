@@ -1,4 +1,5 @@
 import json
+import logging
 
 from groq import APIStatusError
 
@@ -83,6 +84,12 @@ from app.services.rag_exceptions import (
     UnsupportedDocumentError,
 )
 
+from app.core.token_budget import (
+    trim_messages_to_budget,
+)
+
+logger = logging.getLogger(__name__)
+
 
 def build_limited_conversation(
     history,
@@ -146,8 +153,7 @@ class ChatService:
         self.memory_service = memory_service or MemoryService()
 
         self.memory_extraction_service = (
-            memory_extraction_service
-            or MemoryExtractionService(provider=self.provider)
+            memory_extraction_service or MemoryExtractionService(provider=self.provider)
         )
 
     def _extract_and_save_memories(
@@ -173,8 +179,10 @@ class ChatService:
 
             # print(f"Saved {len(memory_candidates)} memory item(s).")
 
-        except MemoryExtractionError as error:
-            print(f"Memory extraction failed: {error}")
+        except MemoryExtractionError:
+            logger.warning(
+                "Memory extraction failed for a user message."
+            )
 
         except Exception as error:
             error_text = str(error)
@@ -184,10 +192,14 @@ class ChatService:
                 or "Failed to generate JSON" in error_text
                 or "Failed to generate structured" in error_text
             ):
-                print("Memory extraction skipped: model rejected the JSON schema.")
+                logger.info(
+                    "Memory extraction skipped because the model rejected the JSON schema."
+                )
                 return
 
-            print(f"Memory persistence failed: {error}")
+            logger.warning(
+                "Memory persistence failed for a user message."
+            )
 
     def generate_response(
         self,
@@ -313,6 +325,10 @@ class ChatService:
                         "content": memory_context,
                     },
                 )
+
+            conversation = trim_messages_to_budget(
+                conversation,
+            )
 
             reply = self.provider.generate_response(
                 conversation,
@@ -582,6 +598,11 @@ class ChatService:
             # -------------------------------------------------
 
             try:
+
+                conversation = trim_messages_to_budget(
+                    conversation,
+                )
+
                 response_stream = self.provider.stream_response(
                     conversation,
                 )
@@ -761,6 +782,10 @@ class ChatService:
                 transform_message=transform_structured_message,
             )
 
+            conversation = trim_messages_to_budget(
+                conversation,
+            )
+
             response = self.provider.generate_structured_response(
                 conversation,
             )
@@ -840,6 +865,10 @@ class ChatService:
                 history,
             )
 
+            conversation = trim_messages_to_budget(
+                conversation,
+            )
+
             response_message = self.provider.generate_with_tools(
                 conversation,
                 [CALCULATOR_TOOL],
@@ -872,6 +901,10 @@ class ChatService:
                         "name": tool_name,
                         "content": tool_result,
                     }
+                )
+
+                conversation = trim_messages_to_budget(
+                    conversation,
                 )
 
                 final_message = self.provider.generate_with_tools(
